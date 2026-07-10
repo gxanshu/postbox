@@ -38,8 +38,15 @@
             "buildsystem" : "meson",
             "sources" : [
                 {
-                    "type" : "git",
-                    "url" : "file:///var/home/anshu/code/projects"
+                    "type" : "dir",
+                    "path" : ".",
+                    "skip" : [
+                        "build",
+                        ".flatpak",
+                        ".flatpak-builder",
+                        ".git",
+                        "postbox.flatpak"
+                    ]
                 }
             ],
             "config-opts" : [
