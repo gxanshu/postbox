@@ -43,8 +43,10 @@ init:
 # ----------------------------------------------------------------------------
 
 # Build Postbox as a Flatpak from your working tree and install it for your user.
+# --disable-updates: trust already-cloned sources (e.g. blueprint-compiler) instead
+# of re-fetching from upstream on every build. Drop it if you bump a source's tag/commit.
 build:
-    flatpak-builder --force-clean --user --install \
+    flatpak-builder --force-clean --user --install --disable-updates \
         "{{fp-builddir}}" "{{manifest}}"
 
 # Build, then launch the Flatpak. This is the normal way to run Postbox.
@@ -65,7 +67,7 @@ inspect: build
 
 # Build, export to a local repo, and produce a single-file .flatpak bundle.
 bundle:
-    flatpak-builder --force-clean --repo="{{fp-repo}}" \
+    flatpak-builder --force-clean --disable-updates --repo="{{fp-repo}}" \
         "{{fp-builddir}}" "{{manifest}}"
     flatpak build-bundle "{{fp-repo}}" "{{bundle}}" "{{app-id}}"
     @echo "Wrote {{bundle}} — install with: flatpak install --user {{bundle}}"
