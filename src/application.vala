@@ -39,7 +39,7 @@ public class Postbox.Application : Adw.Application {
 
     public override void activate () {
         base.activate ();
-        var win = this.active_window ?? new Postbox.Window (this);
+        var win = this.active_window ?? new Postbox.MainWindow (this);
         win.present ();
     }
 

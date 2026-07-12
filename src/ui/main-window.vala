@@ -1,4 +1,4 @@
-/* window.vala
+/* main-window.vala
  *
  * Copyright 2026 Anshu
  *
@@ -18,12 +18,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-[GtkTemplate (ui = "/in/gxanshu/postbox/window.ui")]
-public class Postbox.Window : Adw.ApplicationWindow {
+[GtkTemplate (ui = "/in/gxanshu/postbox/ui/main-window.ui")]
+public class Postbox.MainWindow : Adw.ApplicationWindow {
     [GtkChild]
     private unowned Gtk.Label label;
 
-    public Window (Gtk.Application app) {
+    public MainWindow (Gtk.Application app) {
         Object (application: app);
     }
 }

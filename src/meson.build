@@ -1,7 +1,7 @@
 postbox_sources = [
   'main.vala',
   'application.vala',
-  'window.vala',
+  'ui/main-window.vala',
 ]
 
 postbox_deps = [
@@ -12,8 +12,8 @@ postbox_deps = [
 
 blueprints = custom_target('blueprints',
   input: files(
-    'window.blp',
-    'shortcuts-dialog.blp',
+    'ui/main-window.blp',
+    'ui/shortcuts-dialog.blp',
   ),
   output: '.',
   command: [
