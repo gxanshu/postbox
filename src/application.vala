@@ -31,10 +31,12 @@ public class Postbox.Application : Adw.Application {
         ActionEntry[] action_entries = {
             { "about", this.on_about_action },
             { "preferences", this.on_preferences_action },
+            { "new-window", this.on_new_window_action },
             { "quit", this.quit }
         };
         this.add_action_entries (action_entries, this);
         this.set_accels_for_action ("app.quit", {"<control>q"});
+        this.set_accels_for_action ("app.new-window", {"<control>n"});
     }
 
     public override void activate () {
@@ -60,5 +62,10 @@ public class Postbox.Application : Adw.Application {
 
     private void on_preferences_action () {
         message ("app.preferences action activated");
+    }
+
+    private void on_new_window_action () {
+        var win = new Postbox.MainWindow (this);
+        win.present ();
     }
 }
