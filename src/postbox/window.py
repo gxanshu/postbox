@@ -19,6 +19,8 @@
 
 from gi.repository import Adw, Gdk, Gio, GObject, Gtk
 
+from .account_dialog import PostboxAccountDialog
+
 from .conversation_row import ConversationRow
 from .core.models.email import Email
 from .core.models.folder import Folder
@@ -40,14 +42,23 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     reader_date: Gtk.Label = Gtk.Template.Child()
     reader_subject: Gtk.Label = Gtk.Template.Child()
     reader_body: Gtk.Label = Gtk.Template.Child()
+    main_stack: Gtk.Stack = Gtk.Template.Child()
+    add_account_button: Gtk.Button = Gtk.Template.Child()
 
     def __init__(self, app: Gtk.Application, db: Database) -> None:
         super().__init__(application=app)
 
         self._db: Database = db
-        # Single-account for now — Phase 4 adds the "add account" flow and
-        # picking between several.
-        account_id = self._db.accounts()[0].id
+        self.add_account_button.connect("clicked", self._on_add_account_clicked)
+
+        accounts = self._db.accounts()
+        if not accounts:
+            self.main_stack.set_visible_child_name("no-account")
+            return
+
+        self.main_stack.set_visible_child_name("mail")
+
+        account_id = accounts[0].id
 
         self._folders: Gio.ListStore = Gio.ListStore(item_type=Folder)
         for folder in self._db.folders_for_account(account_id):
@@ -62,6 +73,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         first = self.folder_list.get_row_at_index(0)
         if first is not None:
             self.folder_list.select_row(first)
+
+    def _on_add_account_clicked(self, _button: Gtk.Button) -> None:
+        dialog = PostboxAccountDialog(self._db)
+        dialog.present(self)
 
     # A tiny bit of app CSS: the accent-coloured unread dot and a bold sender
     # name. Loaded from a string so we don't need another resource file yet.
@@ -106,7 +121,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         return box
 
-    def _on_folder_selected(self, _list_box: Gtk.ListBox, row: Gtk.ListBoxRow | None) -> None:
+    def _on_folder_selected(
+        self, _list_box: Gtk.ListBox, row: Gtk.ListBoxRow | None
+    ) -> None:
         if row is None:
             return
 

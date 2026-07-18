@@ -6,122 +6,142 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
   default-width: 1600;
   default-height: 900;
 
-  content: Adw.NavigationSplitView outer_split {
-    sidebar: Adw.NavigationPage {
-      title: _("Folders");
-      child: Adw.ToolbarView {
-        [top]
-        Adw.HeaderBar {
-          [end]
-          Gtk.MenuButton {
-            primary: true;
-            icon-name: "open-menu-symbolic";
-            tooltip-text: _("Main Menu");
-            menu-model: primary_menu;
-          }
-        }
+  content: Gtk.Stack main_stack {
+    StackPage {
+      name: "no-account";
+      child: Adw.StatusPage {
+        icon-name: "mail-unread-symbolic";
+        title: _("No Accounts Yet");
+        description: _("Add a mail account to get started.");
+        child: Gtk.Button add_account_button {
+          label: _("Add Account");
+          halign: center;
 
-        content: Gtk.ScrolledWindow {
-          hscrollbar-policy: never;
-
-          child: Gtk.ListBox folder_list {
-            selection-mode: single;
-
-            styles ["navigation-sidebar"]
-          };
+          styles ["suggested-action", "pill"]
         };
       };
-    };
+    }
 
-    content: Adw.NavigationPage {
-      title: _("Postbox");
-      child: Adw.NavigationSplitView inner_split {
+    StackPage {
+      name: "mail";
+      child: Adw.NavigationSplitView outer_split {
         sidebar: Adw.NavigationPage {
-          title: _("Conversations");
+          title: _("Folders");
           child: Adw.ToolbarView {
             [top]
-            Adw.HeaderBar {}
+            Adw.HeaderBar {
+              [end]
+              Gtk.MenuButton {
+                primary: true;
+                icon-name: "open-menu-symbolic";
+                tooltip-text: _("Main Menu");
+                menu-model: primary_menu;
+              }
+            }
 
             content: Gtk.ScrolledWindow {
               hscrollbar-policy: never;
 
-              child: Gtk.ListView conversation_list {
-              styles ["navigation-sidebar"]
+              child: Gtk.ListBox folder_list {
+                selection-mode: single;
+
+                styles ["navigation-sidebar"]
               };
             };
           };
         };
 
         content: Adw.NavigationPage {
-          title: _("Reader");
-          child: Adw.ToolbarView {
-            [top]
-            Adw.HeaderBar {}
-            content: Gtk.Stack reader_stack {
-              StackPage {
-                name: "empty";
-                child: Adw.StatusPage {
-                  icon-name: "mail-unread-symbolic";
-                  title: _("Select a Conversation");
-                  description: _("Pick a message from the list to read it here.");
-                };
-              }
+          title: _("Postbox");
+          child: Adw.NavigationSplitView inner_split {
+            sidebar: Adw.NavigationPage {
+              title: _("Conversations");
+              child: Adw.ToolbarView {
+                [top]
+                Adw.HeaderBar {}
 
-              StackPage {
-                name: "message";
-                child: Gtk.ScrolledWindow {
+                content: Gtk.ScrolledWindow {
                   hscrollbar-policy: never;
 
-                  child: Gtk.Box {
-                    orientation: vertical;
-                    spacing: 12;
-                    margin-top: 24;
-                    margin-bottom: 24;
-                    margin-start: 24;
-                    margin-end: 24;
-
-                    Gtk.Box {
-                      spacing: 12;
-
-                      Adw.Avatar reader_avatar {
-                        size: 48;
-                        show-initials: true;
-                      }
-
-                      Gtk.Label reader_sender {
-                        xalign: 0;
-                        styles ["heading"]
-                      }
-
-                      Gtk.Label reader_date {
-                        xalign: 0;
-                        styles ["dim-label"]
-                      }
-                    }
-
-                    Gtk.Label reader_subject {
-                      xalign: 0;
-                      wrap: true;
-
-                      styles ["title-2"]
-                    }
-
-                    Gtk.Separator {}
-
-                    Gtk.Label reader_body {
-                      xalign: 0;
-                      yalign: 0;
-                      wrap: true;
-                      vexpand: true;
-                    }
+                  child: Gtk.ListView conversation_list {
+                  styles ["navigation-sidebar"]
                   };
                 };
-              }
+              };
+            };
+
+            content: Adw.NavigationPage {
+              title: _("Reader");
+              child: Adw.ToolbarView {
+                [top]
+                Adw.HeaderBar {}
+                content: Gtk.Stack reader_stack {
+                  StackPage {
+                    name: "empty";
+                    child: Adw.StatusPage {
+                      icon-name: "mail-unread-symbolic";
+                      title: _("Select a Conversation");
+                      description: _("Pick a message from the list to read it here.");
+                    };
+                  }
+
+                  StackPage {
+                    name: "message";
+                    child: Gtk.ScrolledWindow {
+                      hscrollbar-policy: never;
+
+                      child: Gtk.Box {
+                        orientation: vertical;
+                        spacing: 12;
+                        margin-top: 24;
+                        margin-bottom: 24;
+                        margin-start: 24;
+                        margin-end: 24;
+
+                        Gtk.Box {
+                          spacing: 12;
+
+                          Adw.Avatar reader_avatar {
+                            size: 48;
+                            show-initials: true;
+                          }
+
+                          Gtk.Label reader_sender {
+                            xalign: 0;
+                            styles ["heading"]
+                          }
+
+                          Gtk.Label reader_date {
+                            xalign: 0;
+                            styles ["dim-label"]
+                          }
+                        }
+
+                        Gtk.Label reader_subject {
+                          xalign: 0;
+                          wrap: true;
+
+                          styles ["title-2"]
+                        }
+
+                        Gtk.Separator {}
+
+                        Gtk.Label reader_body {
+                          xalign: 0;
+                          yalign: 0;
+                          wrap: true;
+                          vexpand: true;
+                        }
+                      };
+                    };
+                  }
+                };
+              };
             };
           };
         };
       };
-    };
+    }
   };
 
   Adw.Breakpoint {
@@ -144,6 +164,10 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
 
 menu primary_menu {
   section {
+    item {
+      label: _("_Accounts");
+      action: "app.accounts";
+    }
     item {
       label: _("_Preferences");
       action: "app.preferences";
