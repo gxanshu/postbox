@@ -36,6 +36,12 @@ postbox_sources = [
 ]
 python_installation.install_sources(postbox_sources, subdir: 'postbox')
 
+postbox_core_sources = [
+  'postbox/core/__init__.py',
+  'postbox/core/database.py',
+]
+python_installation.install_sources(postbox_core_sources, subdir: 'postbox/core')
+
 conf = configuration_data()
 conf.set('PYTHON', python_installation.full_path())
 conf.set('VERSION', meson.project_version())
