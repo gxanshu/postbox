@@ -1,0 +1,78 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $PostboxAccountDialog: Adw.Dialog {
+    title: _("Add Account");
+    content-width: 480;
+    content-height: 560;
+
+    child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {
+            show-start-title-buttons: false;
+            show-end-title-buttons: false;
+
+            [start]
+            Gtk.Button cancel_button {
+                label: _("Cancel");
+              }
+              
+            [end]
+            Gtk.Button add_button {
+                label: _("Add");
+                sensitive: false;
+
+                styles ["suggested-action"]
+              }
+          }
+
+          content: Gtk.ScrolledWindow {
+              child: Adw.PreferencesPage {
+                  Adw.PreferencesGroup {
+                      title: _("Account");
+
+                      Adw.EntryRow display_name_row {
+                          title: _("Display Name");
+                        }
+
+                      Adw.EntryRow email_row {
+                          title: _("Email Address");
+                          input-purpose: email;
+                        }
+
+                      Adw.PasswordEntryRow password_row {
+                          title: _("Password");
+                        }
+                    }
+
+                  Adw.PreferencesGroup {
+                      title: _("Incoming Mail (IMAP)");
+
+                      Adw.EntryRow imap_host_row {
+                          title: _("Server");
+                        }
+
+                      Adw.EntryRow imap_port_row {
+                          title: _("Port");
+                          input-purpose: digits;
+                          text: "993"
+                        }
+                    }
+
+                  Adw.PreferencesGroup {
+                      title: _("Outgoing Mail (SMTP)");
+
+                      Adw.EntryRow smtp_host_row {
+                          title: _("Server");
+                        }
+
+                      Adw.EntryRow smtp_port_row {
+                          title: _("Port");
+                          input-purpose: digits;
+                          text: "993"
+                        }
+                    }
+                }
+            }
+      }
+  }
