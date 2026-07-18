@@ -16,3 +16,9 @@ select = ["E", "W", "F", "I", "UP", "B", "SLF"]
 typeCheckingMode = "basic"
 pythonVersion = "3.12"
 include = ["src/postbox"]
+venvPath = "."
+venv = ".venv"
+# gi.repository submodules (Gtk, Adw, ...) are generated at runtime from
+# GObject Introspection, so there's never real source to check stubs
+# against — this warning is expected noise on every gi import.
+reportMissingModuleSource = "none"
