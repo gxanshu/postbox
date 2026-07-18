@@ -13,7 +13,7 @@ _SCHEMA = Secret.Schema.new(
 def store_password(account_id: int, password: str) -> None:
     Secret.password_store_sync(
         _SCHEMA,
-        {"account-id": account_id},
+        {"account-id": str(account_id)},
         Secret.COLLECTION_DEFAULT,
         f"Postbox account {account_id}",
         password,
@@ -21,8 +21,8 @@ def store_password(account_id: int, password: str) -> None:
     )
 
 def lookup_password(account_id: int) -> str | None:
-    return Secret.password_lookup_sync(_SCHEMA, {"account-id": account_id}, None)
+    return Secret.password_lookup_sync(_SCHEMA, {"account-id": str(account_id)}, None)
 
 
-def clear_password(account_id: int) -> str | None:
-    return Secret.password_clear_sync(_SCHEMA, {"account-id": account_id}, None)
+def clear_password(account_id: int) -> bool:
+    return Secret.password_clear_sync(_SCHEMA, {"account-id": str(account_id)}, None)
