@@ -63,6 +63,7 @@ class Database:
                 preview TEXT NOT NULL,
                 date TEXT NOT NULL,
                 unread INTEGER NOT NULL DEFAULT 1,
+                starred INTEGER NOT NULL DEFAULT 0,
                 raw_message BLOB,
                 message_id TEXT,
                 in_reply_to TEXT,
@@ -260,6 +261,22 @@ class Database:
         self._conn.execute("UPDATE emails SET unread = 0 WHERE id = ?", (email_id,))
         self._conn.commit()
 
+    def mark_email_unread(self, email_id: int) -> None:
+        self._conn.execute("UPDATE emails SET unread = 1 WHERE id = ?", (email_id,))
+        self._conn.commit()
+
+    def set_email_starred(self, email_id: int, starred: bool) -> None:
+        self._conn.execute(
+            "UPDATE emails SET starred = ? WHERE id = ?", (int(starred), email_id)
+        )
+        self._conn.commit()
+
+    def move_email(self, email_id: int, folder_id: int) -> None:
+        self._conn.execute(
+            "UPDATE emails SET folder_id = ? WHERE id = ?", (folder_id, email_id)
+        )
+        self._conn.commit()
+
     def get_raw_message(self, email_id: int) -> bytes | None:
         row = self._conn.execute(
             "SELECT raw_message FROM emails WHERE id = ?", (email_id,)
@@ -306,6 +323,7 @@ class Database:
         preview: str,
         date: str,
         unread: bool,
+        starred: bool = False,
         message_id: str = "",
         in_reply_to: str = "",
         references: str = "",
@@ -315,12 +333,12 @@ class Database:
             """
             INSERT OR IGNORE INTO emails
                 (folder_id, server_id, sender, subject, preview, date, unread,
-                 message_id, in_reply_to, reference_ids)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 starred, message_id, in_reply_to, reference_ids)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 folder_id, server_id, sender, subject, preview, date, int(unread),
-                message_id, in_reply_to, references,
+                int(starred), message_id, in_reply_to, references,
             ),
         )
         self._conn.commit()
@@ -340,6 +358,7 @@ class Database:
             preview=row["preview"],
             date=row["date"],
             unread=bool(row["unread"]),
+            starred=bool(row["starred"]),
             message_id=row["message_id"] or "",
             in_reply_to=row["in_reply_to"] or "",
             references=row["reference_ids"] or "",

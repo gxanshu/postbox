@@ -39,6 +39,10 @@ class Conversation(GObject.Object):
         return any(mail.unread for mail in self.emails)
 
     @property
+    def starred(self) -> bool:
+        return any(mail.starred for mail in self.emails)
+
+    @property
     def participants(self) -> str:
         seen: list[str] = []
         for mail in self.emails:

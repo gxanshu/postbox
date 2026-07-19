@@ -21,6 +21,7 @@ class Email(GObject.Object):
         preview: str,
         date: str,
         unread: bool,
+        starred: bool = False,
         message_id: str = "",
         in_reply_to: str = "",
         references: str = "",
@@ -35,6 +36,7 @@ class Email(GObject.Object):
         self.preview: str = preview
         self.date: str = date
         self.unread: bool = unread
+        self.starred: bool = starred
         self.message_id: str = message_id
         self.in_reply_to: str = in_reply_to
         self.references: str = references
