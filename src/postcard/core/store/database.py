@@ -119,6 +119,20 @@ class Database:
                 self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
                 pass  # column already exists
+
+        self._conn.execute(
+            "UPDATE accounts SET imap_security = 'tls' WHERE imap_security IS NULL"
+        )
+        self._conn.execute(
+            """
+            UPDATE accounts
+            SET smtp_security = CASE
+                WHEN smtp_port = 465 THEN 'tls'
+                ELSE 'starttls'
+            END
+            WHERE smtp_security IS NULL
+            """
+        )
         self._conn.commit()
 
     # --- accounts -----------------------------------------------------------
