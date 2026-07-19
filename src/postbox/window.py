@@ -57,6 +57,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     add_account_button: Gtk.Button = Gtk.Template.Child()
     refresh_button: Gtk.Button = Gtk.Template.Child()
     sync_spinner: Gtk.Spinner = Gtk.Template.Child()
+    search_bar: Gtk.SearchBar = Gtk.Template.Child()
+    search_entry: Gtk.SearchEntry = Gtk.Template.Child()
     compose_button: Gtk.Button = Gtk.Template.Child()
     reply_button: Gtk.Button = Gtk.Template.Child()
     forward_button: Gtk.Button = Gtk.Template.Child()
@@ -68,12 +70,19 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._db: Database = db
         self._current_folder: Folder | None = None
         self._active_view: MessageView | None = None
+        self._search_timeout: int = 0
 
         self.add_account_button.connect("clicked", self._on_add_account_clicked)
         self.refresh_button.connect("clicked", self._on_refresh_clicked)
         self.compose_button.connect("clicked", self._on_compose_clicked)
         self.reply_button.connect("clicked", self._on_reply_clicked)
         self.forward_button.connect("clicked", self._on_forward_clicked)
+
+        self.search_bar.set_key_capture_widget(self)
+        self.search_entry.connect("search-changed", self._on_search_changed)
+        self.search_bar.connect(
+            "notify::search-mode-enabled", self._on_search_mode_changed
+        )
 
         accounts = self._db.accounts()
         if not accounts:
@@ -210,14 +219,46 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         folder = self._folders.get_item(row.get_index())
         assert isinstance(folder, Folder)
         self._current_folder = folder
+        self._refresh_conversations()
+
+    # Rebuild the conversation list from the current folder, applying the
+    # search query if one is typed. Called on folder change and search change.
+    def _refresh_conversations(self) -> None:
+        if self._current_folder is None:
+            return
+
+        query = self.search_entry.get_text().strip()
+        if query:
+            matches = self._db.search_conversations(self._current_folder.id, query)
+        else:
+            matches = self._db.conversations_in_folder(self._current_folder.id)
 
         conversations = Gio.ListStore(item_type=Conversation)
-        for conversation in self._db.conversations_in_folder(folder.id):
+        for conversation in matches:
             conversations.append(conversation)
 
         self._selection.set_model(conversations)
         self._selection.unselect_all()
         self.reader_stack.set_visible_child_name("empty")
+
+    # Debounce keystrokes: query the database ~200ms after typing stops instead
+    # of on every letter.
+    def _on_search_changed(self, _entry: Gtk.SearchEntry) -> None:
+        if self._search_timeout:
+            GLib.source_remove(self._search_timeout)
+        self._search_timeout = GLib.timeout_add(200, self._on_search_timeout)
+
+    def _on_search_timeout(self) -> bool:
+        self._search_timeout = 0
+        self._refresh_conversations()
+        return False
+
+    # Closing the search bar clears the query so the full list comes back.
+    def _on_search_mode_changed(
+        self, search_bar: Gtk.SearchBar, _param: GObject.ParamSpec
+    ) -> None:
+        if not search_bar.get_search_mode():
+            self.search_entry.set_text("")
 
     # Potentially thousands of rows, so this uses the scalable GTK4 pattern: a
     # GListStore of data, a SingleSelection wrapper, and a factory that recycles

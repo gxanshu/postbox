@@ -75,9 +75,25 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
                   }
 
                   [end]
+                  Gtk.ToggleButton search_button {
+                    icon-name: "system-search-symbolic";
+                    tooltip-text: _("Search");
+                  }
+
+                  [end]
                   Gtk.Spinner sync_spinner {
                     visible: false;
                   }
+                }
+
+                [top]
+                Gtk.SearchBar search_bar {
+                  search-mode-enabled: bind search_button.active bidirectional;
+
+                  child: Gtk.SearchEntry search_entry {
+                    hexpand: true;
+                    placeholder-text: _("Search mail");
+                  };
                 }
 
                 content: Gtk.ScrolledWindow {
