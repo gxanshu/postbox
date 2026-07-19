@@ -53,6 +53,21 @@ def fetch_mailbox(
     return SyncResult(folders, messages)
 
 
+def fetch_full_message(
+    account: Account, password: str, folder_name: str, uid: str
+) -> bytes:
+    """Connect, login, open one folder, and download a single full message"""
+    session = ImapSession(account.imap_host, account.imap_port)
+    session.connect()
+
+    try:
+        session.login(account.email, password)
+        session.select(folder_name)
+        return session.fetch_message(uid)
+    finally:
+        session.logout()
+
+
 def icon_for_folder(name: str) -> str:
     """Pick a symbolic icon name for a mailbox (used in the sidebar)."""
     lname = name.lower()

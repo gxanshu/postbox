@@ -90,6 +90,18 @@ class ImapSession:
             messages.append(self._parse(meta.decode("utf-8", "replace"), header_bytes))
         return messages
 
+    def fetch_message(self, uid: str) -> bytes:
+        """Fetch one full message (headers + body) by its stable UID, without marking it seen"""
+        type, data = self._require_imap().uid("fetch", uid, "(BODY.PEEK[])")
+        if type != "OK":
+            raise ImapError(f"could not fetch message {uid}: {data}")
+
+        for item in data:
+            if isinstance(item, tuple):
+                return item[1]
+
+        raise ImapError(f"no message body returned for uid {uid}")
+
     def _parse(self, meta: str, header_bytes: bytes) -> dict:
         uid = re.search(r"UID (\d+)", meta)
         flags = re.search(r"FLAGS \(([^)]*)\)", meta)
