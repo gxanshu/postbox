@@ -17,15 +17,20 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
 
     StackPage {
       name: "no-account";
-      child: Adw.StatusPage {
-        icon-name: "mail-unread-symbolic";
-        title: _("Welcome to Postbox");
-        description: _("Add a mail account to get started.");
-        child: Gtk.Button add_account_button {
-          label: _("Add Account");
-          halign: center;
+      child: Adw.ToolbarView {
+        [top]
+        Adw.HeaderBar {}
 
-          styles ["suggested-action", "pill"]
+        content: Adw.StatusPage {
+          icon-name: "mail-unread-symbolic";
+          title: _("Welcome to Postbox");
+          description: _("Add a mail account to get started.");
+          child: Gtk.Button add_account_button {
+            label: _("Add Account");
+            halign: center;
+
+            styles ["suggested-action", "pill"]
+          };
         };
       };
     }
