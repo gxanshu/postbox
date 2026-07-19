@@ -15,6 +15,7 @@ class MessageHeader:
     subject: str
     date: str
     unread: bool
+    starred: bool = False
     preview: str = ""
     message_id: str = ""
     in_reply_to: str = ""
@@ -49,6 +50,7 @@ def fetch_mailbox(
             subject=item["subject"] or "(no subject)",
             date=_format_date(item["date"]),
             unread=not item["seen"],
+            starred=item["flagged"],
             message_id=item["message_id"],
             in_reply_to=item["in_reply_to"],
             references=item["references"],
@@ -72,6 +74,63 @@ def fetch_full_message(
         return session.fetch_message(uid)
     finally:
         session.logout()
+
+
+def set_flag(
+    account: Account,
+    password: str,
+    folder_name: str,
+    uids: list[str],
+    flag: str,
+    add: bool,
+) -> None:
+    """Add or remove an IMAP flag on every message in a conversation."""
+    session = ImapSession(account.imap_host, account.imap_port)
+    session.connect()
+    try:
+        session.login(account.email, password)
+        session.select(folder_name, readonly=False)
+        for uid in uids:
+            session.store_flags(uid, flag, add)
+    finally:
+        session.logout()
+
+
+def move_messages(
+    account: Account,
+    password: str,
+    folder_name: str,
+    uids: list[str],
+    destination: str,
+) -> None:
+    """Move every message in a conversation to another mailbox."""
+    session = ImapSession(account.imap_host, account.imap_port)
+    session.connect()
+    try:
+        session.login(account.email, password)
+        session.select(folder_name, readonly=False)
+        for uid in uids:
+            session.move(uid, destination)
+    finally:
+        session.logout()
+
+
+def role_for_folder(name: str) -> str:
+    """Classify a mailbox by name: inbox/sent/drafts/trash/junk/archive/other."""
+    lname = name.lower()
+    if lname == "inbox":
+        return "inbox"
+    if "sent" in lname:
+        return "sent"
+    if "draft" in lname:
+        return "drafts"
+    if "trash" in lname or "deleted" in lname:
+        return "trash"
+    if "junk" in lname or "spam" in lname:
+        return "junk"
+    if "archive" in lname or "all mail" in lname:
+        return "archive"
+    return "other"
 
 
 def icon_for_folder(name: str) -> str:

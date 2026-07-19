@@ -57,13 +57,29 @@ class ImapSession:
             names.append(name)
         return names
 
-    def select(self, mailbox: str) -> int:
-        """Open a mailbox READ-ONLY; return how many messages it holds."""
-        # readonly=True keeps us non-destructive and never marks mail as read.
-        typ, data = self._require_imap().select(mailbox, readonly=True)
+    def select(self, mailbox: str, readonly: bool = True) -> int:
+        """Open a mailbox; return how many messages it holds.
+
+        readonly=True (the default) keeps us non-destructive and never marks
+        mail as read. Flag/move actions open it writable.
+        """
+        typ, data = self._require_imap().select(mailbox, readonly=readonly)
         if typ != "OK":
             raise ImapError(f"could not open {mailbox}: {data}")
         return int(data[0]) if data and data[0] else 0
+
+    def store_flags(self, uid: str, flags: str, add: bool) -> None:
+        """Add or remove flags (e.g. "\\Seen") on one message by UID."""
+        command = "+FLAGS" if add else "-FLAGS"
+        typ, data = self._require_imap().uid("STORE", uid, command, f"({flags})")
+        if typ != "OK":
+            raise ImapError(f"could not update flags on {uid}: {data}")
+
+    def move(self, uid: str, destination: str) -> None:
+        """Move one message by UID to another mailbox (RFC 6851 MOVE)."""
+        typ, data = self._require_imap().uid("MOVE", uid, destination)
+        if typ != "OK":
+            raise ImapError(f"could not move {uid} to {destination}: {data}")
 
     def fetch_recent_headers(self, exists: int, limit: int) -> list[dict]:
         """Fetch UID + flags + a few headers for the newest `limit` messages."""
@@ -109,7 +125,9 @@ class ImapSession:
     def _parse(self, meta: str, header_bytes: bytes) -> dict:
         uid = re.search(r"UID (\d+)", meta)
         flags = re.search(r"FLAGS \(([^)]*)\)", meta)
-        seen = flags is not None and "\\Seen" in flags.group(1)
+        flag_text = flags.group(1) if flags else ""
+        seen = "\\Seen" in flag_text
+        flagged = "\\Flagged" in flag_text
 
         # Let the stdlib decode the header block: it handles line folding and
         # the =?utf-8?...?= encoding you'd otherwise see as gibberish. Full MIME
@@ -124,4 +142,5 @@ class ImapSession:
             "in_reply_to": str(headers["In-Reply-To"]) if headers["In-Reply-To"] else "",
             "references": str(headers["References"]) if headers["References"] else "",
             "seen": seen,
+            "flagged": flagged,
         }
