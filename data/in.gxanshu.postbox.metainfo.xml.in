@@ -43,8 +43,12 @@
     <color type="primary" scheme_preference="dark">#306bb4</color>
   </branding>
 
-  <!-- TODO: add real screenshots (hosted at a stable https URL) before a Flathub
-       submission; Flathub requires at least one <screenshot> here. -->
+  <screenshots>
+    <screenshot type="default">
+      <caption>The three-pane layout with folders, conversations, and reader</caption>
+      <image>https://raw.githubusercontent.com/gxanshu/postbox/main/data/screenshots/main-window.png</image>
+    </screenshot>
+  </screenshots>
 
   <releases>
     <release version="1.0.0" date="2026-07-19">

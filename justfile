@@ -14,10 +14,14 @@
 app-id   := "in.gxanshu.postbox"
 manifest := app-id + ".json"
 
+# Read straight from meson.build so the bundle filename always matches the
+# version in the metainfo release entry — no separate place to update.
+version  := `grep -m1 "version:" meson.build | sed -E "s/.*'([^']+)'.*/\1/"`
+
 # flatpak-builder writes its build tree + local repo here (kept out of git).
 fp-builddir := ".flatpak/build"
 fp-repo     := ".flatpak/repo"
-bundle      := "postbox.flatpak"
+bundle      := "postbox-" + version + ".flatpak"
 
 # A plain host meson build dir, used ONLY by `pot` to regenerate translations.
 # The app is never *built* or *run* from here — see `build`/`run`.
@@ -99,4 +103,4 @@ pot:
 
 # Remove all build artifacts (flatpak + meson + bundle).
 clean:
-    rm -rf "{{builddir}}" ".flatpak" ".flatpak-builder" "{{bundle}}"
+    rm -rf "{{builddir}}" ".flatpak" ".flatpak-builder" postbox-*.flatpak

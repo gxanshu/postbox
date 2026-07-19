@@ -34,7 +34,8 @@
         {
           "type": "git",
           "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler",
-          "tag": "v0.20.4"
+          "tag": "v0.20.4",
+          "commit": "cb333fb74a6cb0bd7506f05c222e8e057fa0a2e9"
         }
       ]
     },
@@ -51,7 +52,7 @@
             ".flatpak",
             ".flatpak-builder",
             ".git",
-            "postbox.flatpak"
+            "postbox-*.flatpak"
           ]
         }
       ],
