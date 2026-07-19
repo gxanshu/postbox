@@ -113,6 +113,14 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._network_handler = self._network.connect(
             "network-changed", self._on_network_changed
         )
+
+        self._syncing = False
+        self._background_sync = False
+        self._sync_timer_id = 0
+        self._interval_handler = self._settings.connect(
+            "changed::sync-interval-minutes", lambda *_: self._reschedule_sync()
+        )
+
         self.connect("close-request", self._on_close_request)
         if not self._online:
             self._show_offline_banner()
@@ -154,6 +162,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self.folder_list.select_row(first)
 
         self._drain_outbox()
+        self._reschedule_sync()
+        if self._online:
+            self._start_sync(background=True)
 
     # --- account switcher -------------------------------------------------
 
@@ -1001,12 +1012,14 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._toast(_("Sent {n} queued message(s).").format(n=sent_count))
         return False
 
-    def _start_sync(self) -> None:
+    def _start_sync(self, background: bool = False) -> None:
         password = secrets.lookup_password(self._account_id)
         if not password:
-            self._toast(_("No saved password for this account."))
+            if not background:
+                self._toast(_("No saved password for this account."))
             return
 
+        self._background_sync = background
         self._set_syncing(True)
         thread = threading.Thread(
             target=self._sync_worker,
@@ -1014,6 +1027,27 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             daemon=True,
         )
         thread.start()
+
+    # Refresh on a timer using the configured interval (0 = manual only).
+    def _reschedule_sync(self) -> None:
+        if self._sync_timer_id:
+            GLib.source_remove(self._sync_timer_id)
+            self._sync_timer_id = 0
+        minutes = self._settings.get_int("sync-interval-minutes")
+        if minutes > 0:
+            self._sync_timer_id = GLib.timeout_add_seconds(
+                minutes * 60, self._on_sync_tick
+            )
+
+    def _on_sync_tick(self) -> bool:
+        if (
+            getattr(self, "_account_id", None) is not None
+            and self._online
+            and not self._syncing
+        ):
+            self._drain_outbox()
+            self._start_sync(background=True)
+        return True
 
     # Runs on the worker thread: network only, no Gtk/database access.
     def _sync_worker(self, account: Account, password: str) -> None:
@@ -1027,6 +1061,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     # Back on the main thread: safe to touch the database and widgets.
     def _on_sync_done(self, result: mail_sync.SyncResult) -> bool:
+        # Remember the open conversation so a background poll doesn't yank it.
+        selected = self._selection.get_selected_item()
+        keep_id = selected.id if isinstance(selected, Conversation) else None
+
         for name in result.folders:
             self._db.get_or_create_folder(
                 self._account_id, name, mail_sync.icon_for_folder(name)
@@ -1054,10 +1092,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._db.reassign_conversations(inbox.id)
 
         self._reload_folders()
-        self._refresh_conversations()
+        self._refresh_conversations(keep_id=keep_id)
         self._set_syncing(False)
         self.connection_banner.set_revealed(False)
-        self._toast(_("Synced {n} messages.").format(n=len(result.messages)))
+        if not self._background_sync:
+            self._toast(_("Synced {n} messages.").format(n=len(result.messages)))
 
         # Only nag about new mail when the user isn't already looking.
         if new_count and not self.is_active():
@@ -1119,9 +1158,13 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     def _on_close_request(self, _window: Gtk.Window) -> bool:
         self._network.disconnect(self._network_handler)
+        self._settings.disconnect(self._interval_handler)
+        if self._sync_timer_id:
+            GLib.source_remove(self._sync_timer_id)
         return False
 
     def _set_syncing(self, syncing: bool) -> None:
+        self._syncing = syncing
         self.refresh_button.set_sensitive(not syncing)
         self.sync_spinner.set_visible(syncing)
         if syncing:
