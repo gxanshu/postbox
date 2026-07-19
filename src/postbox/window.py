@@ -703,13 +703,19 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         folder = self._folders.get_item(row.get_index())
         assert isinstance(folder, Folder)
+        previous = self._current_folder
         self._current_folder = folder
         self._rebuild_move_menu()
-        if not self._suppress_folder_refresh:
-            self._refresh_conversations()
-            # Show cached mail instantly, then pull this folder from the server.
-            if self._online:
-                self._start_sync(background=True, folder_name=folder.name)
+        if self._suppress_folder_refresh:
+            return
+        self._refresh_conversations()
+        # Show cached mail instantly, then pull this folder from the server.
+        # Guard on a real folder change: rebuilding the sidebar re-emits
+        # row-selected for the same folder (sometimes after the suppress flag is
+        # cleared), which would otherwise sync in a tight loop.
+        changed = previous is None or previous.id != folder.id
+        if changed and self._online:
+            self._start_sync(background=True, folder_name=folder.name)
 
     # Rebuild the conversation list from the current folder, applying the
     # search query if one is typed. Called on folder change and search change.
@@ -1115,6 +1121,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     # Back on the main thread: safe to touch the database and widgets.
     def _on_sync_done(self, result: mail_sync.SyncResult) -> bool:
+        import sys as _sys
+        print(f"DBG sync-done {result.folder}", file=_sys.stderr, flush=True)
         # Remember the open conversation so a background poll doesn't yank it.
         selected = self._selection.get_selected_item()
         keep_id = selected.id if isinstance(selected, Conversation) else None
