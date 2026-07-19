@@ -30,6 +30,7 @@ from gi.repository import Adw, Gio, Gtk
 
 from .accounts_dialog import PostboxAccountsDialog
 from .core.store.database import Database
+from .preferences_dialog import PostboxPreferencesDialog
 from .window import PostboxMainWindow
 
 
@@ -47,7 +48,9 @@ class PostboxApplication(Adw.Application):
         self.settings = Gio.Settings(schema_id="in.gxanshu.postbox")
 
         self._create_action("about", self.on_about_action)
-        self._create_action("preferences", self.on_preferences_action)
+        self._create_action(
+            "preferences", self.on_preferences_action, ["<control>comma"]
+        )
         self._create_action("new-window", self.on_new_window_action, ["<control>n"])
         self._create_action(
             "shortcuts", self.on_shortcuts_action, ["<control>question"]
@@ -87,7 +90,8 @@ class PostboxApplication(Adw.Application):
         about.present(self.props.active_window)
 
     def on_preferences_action(self, *args: object) -> None:
-        print("app.preferences action activated")
+        dialog = PostboxPreferencesDialog(self.settings)
+        dialog.present(self.props.active_window)
 
     def on_new_window_action(self, *args: object) -> None:
         PostboxMainWindow(self, self.db, self.settings).present()

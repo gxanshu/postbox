@@ -10,6 +10,7 @@ blueprints = custom_target('blueprints',
     'ui/account-dialog.blp',
     'ui/accounts-dialog.blp',
     'ui/composer-window.blp',
+    'ui/preferences-dialog.blp',
   ),
   output: '.',
   command: [
@@ -39,6 +40,7 @@ postbox_sources = [
   'postbox/account_dialog.py',
   'postbox/accounts_dialog.py',
   'postbox/composer_window.py',
+  'postbox/preferences_dialog.py',
   'postbox/mail_sync.py',
   'postbox/mail_send.py',
 ]

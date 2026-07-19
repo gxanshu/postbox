@@ -7,9 +7,11 @@ src/postbox/accounts_dialog.py
 src/postbox/application.py
 src/postbox/composer_window.py
 src/postbox/message_view.py
+src/postbox/preferences_dialog.py
 src/postbox/window.py
 src/ui/account-dialog.blp
 src/ui/accounts-dialog.blp
 src/ui/composer-window.blp
 src/ui/main-window.blp
+src/ui/preferences-dialog.blp
 src/ui/shortcuts-dialog.blp
