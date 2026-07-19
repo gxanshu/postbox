@@ -44,6 +44,7 @@ class PostboxApplication(Adw.Application):
         )
         self.version = version
         self.db = Database()
+        self.settings = Gio.Settings(schema_id="in.gxanshu.postbox")
 
         self._create_action("about", self.on_about_action)
         self._create_action("preferences", self.on_preferences_action)
@@ -55,7 +56,9 @@ class PostboxApplication(Adw.Application):
         self._create_action("accounts", self.on_accounts_action)
 
     def do_activate(self) -> None:
-        win = self.props.active_window or PostboxMainWindow(self, self.db)
+        win = self.props.active_window or PostboxMainWindow(
+            self, self.db, self.settings
+        )
         win.present()
 
     # Register an app.<name> action, optionally with keyboard accelerators.
@@ -87,7 +90,7 @@ class PostboxApplication(Adw.Application):
         print("app.preferences action activated")
 
     def on_new_window_action(self, *args: object) -> None:
-        PostboxMainWindow(self, self.db).present()
+        PostboxMainWindow(self, self.db, self.settings).present()
 
     def on_shortcuts_action(self, *args: object) -> None:
         builder = Gtk.Builder.new_from_resource(

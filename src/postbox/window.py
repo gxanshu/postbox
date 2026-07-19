@@ -68,10 +68,13 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     move_button: Gtk.MenuButton = Gtk.Template.Child()
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
-    def __init__(self, app: Gtk.Application, db: Database) -> None:
+    def __init__(
+        self, app: Gtk.Application, db: Database, settings: Gio.Settings
+    ) -> None:
         super().__init__(application=app)
 
         self._db: Database = db
+        self._settings: Gio.Settings = settings
         self._current_folder: Folder | None = None
         self._active_view: MessageView | None = None
         self._search_timeout: int = 0

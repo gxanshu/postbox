@@ -1,5 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="postbox">
 	<schema id="in.gxanshu.postbox" path="/in/gxanshu/postbox/">
+		<key name="notifications" type="b">
+			<default>true</default>
+			<summary>Notify about new mail</summary>
+			<description>Show a desktop notification when new mail arrives.</description>
+		</key>
+		<key name="load-remote-images" type="b">
+			<default>false</default>
+			<summary>Load remote images</summary>
+			<description>Load remote images in messages by default instead of asking.</description>
+		</key>
+		<key name="sync-interval-minutes" type="i">
+			<range min="0" max="1440"/>
+			<default>15</default>
+			<summary>Sync interval in minutes</summary>
+			<description>How often to check for new mail. Set to 0 to check manually only.</description>
+		</key>
+		<key name="signature-enabled" type="b">
+			<default>false</default>
+			<summary>Append a signature</summary>
+			<description>Add a signature to the bottom of outgoing messages.</description>
+		</key>
+		<key name="signature-text" type="s">
+			<default>''</default>
+			<summary>Signature text</summary>
+			<description>The signature appended to outgoing messages.</description>
+		</key>
+		<key name="window-width" type="i">
+			<default>1600</default>
+			<summary>Main window width</summary>
+		</key>
+		<key name="window-height" type="i">
+			<default>900</default>
+			<summary>Main window height</summary>
+		</key>
+		<key name="window-maximized" type="b">
+			<default>false</default>
+			<summary>Main window maximized</summary>
+		</key>
 	</schema>
 </schemalist>
