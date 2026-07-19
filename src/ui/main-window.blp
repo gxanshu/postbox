@@ -32,6 +32,14 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
           child: Adw.ToolbarView {
             [top]
             Adw.HeaderBar {
+              [start]
+              Gtk.Button compose_button {
+                icon-name: "mail-message-new-symbolic";
+                tooltip-text: _("New Message");
+
+                styles ["suggested-action"]
+              }
+
               [end]
               Gtk.MenuButton {
                 primary: true;
@@ -87,7 +95,21 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
               title: _("Reader");
               child: Adw.ToolbarView {
                 [top]
-                Adw.HeaderBar {}
+                Adw.HeaderBar {
+                  [end]
+                  Gtk.Button forward_button {
+                    icon-name: "mail-forward-symbolic";
+                    tooltip-text: _("Forward");
+                    sensitive: false;
+                  }
+
+                  [end]
+                  Gtk.Button reply_button {
+                    icon-name: "mail-reply-sender-symbolic";
+                    tooltip-text: _("Reply");
+                    sensitive: false;
+                  }
+                }
                 content: Gtk.Stack reader_stack {
                   StackPage {
                     name: "empty";
