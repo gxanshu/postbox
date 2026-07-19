@@ -165,9 +165,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._setup_folder_sidebar()
         self._setup_conversation_list()
 
-        first = self.folder_list.get_row_at_index(0)
-        if first is not None:
-            self.folder_list.select_row(first)
+        # Selecting the inbox kicks off a network fetch for it via
+        # _on_folder_selected; the sync below only bootstraps a fresh account
+        # whose folders aren't in the database yet.
+        self._select_inbox_row()
 
         self._drain_outbox()
         self._reschedule_sync()
@@ -681,6 +682,19 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         return box
 
+    # Select the inbox row (or the first folder if we can't spot one).
+    def _select_inbox_row(self) -> None:
+        target = 0
+        for i in range(self._folders.get_n_items()):
+            folder = self._folders.get_item(i)
+            assert isinstance(folder, Folder)
+            if mail_sync.role_for_folder(folder.name) == "inbox":
+                target = i
+                break
+        row = self.folder_list.get_row_at_index(target)
+        if row is not None:
+            self.folder_list.select_row(row)
+
     def _on_folder_selected(
         self, _list_box: Gtk.ListBox, row: Gtk.ListBoxRow | None
     ) -> None:
@@ -693,6 +707,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._rebuild_move_menu()
         if not self._suppress_folder_refresh:
             self._refresh_conversations()
+            # Show cached mail instantly, then pull this folder from the server.
+            if self._online:
+                self._start_sync(background=True, folder_name=folder.name)
 
     # Rebuild the conversation list from the current folder, applying the
     # search query if one is typed. Called on folder change and search change.
@@ -1019,7 +1036,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
                 continue
             if sent_folder is None:
                 sent_folder = self._db.get_or_create_folder(
-                    self._account_id, "Sent", "mail-sent-symbolic"
+                    self._account_id, "Sent", mail_sync.icon_for_folder("Sent")
                 )
             row = self._db.save_email(
                 sent_folder.id,
@@ -1039,7 +1056,13 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._toast(_("Sent {n} queued message(s).").format(n=sent_count))
         return False
 
-    def _start_sync(self, background: bool = False) -> None:
+    def _start_sync(
+        self, background: bool = False, folder_name: str | None = None
+    ) -> None:
+        # Don't pile background syncs (folder clicks, the poll timer) on top of
+        # one already running.
+        if background and self._syncing:
+            return
         password = secrets.lookup_password(self._account_id)
         if not password:
             if not background:
@@ -1052,7 +1075,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self.conversation_stack.set_visible_child_name("loading")
         thread = threading.Thread(
             target=self._sync_worker,
-            args=(self._account, password),
+            args=(self._account, password, folder_name),
             daemon=True,
         )
         thread.start()
@@ -1079,9 +1102,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         return True
 
     # Runs on the worker thread: network only, no Gtk/database access.
-    def _sync_worker(self, account: Account, password: str) -> None:
+    def _sync_worker(
+        self, account: Account, password: str, folder_name: str | None
+    ) -> None:
         try:
-            result = mail_sync.fetch_mailbox(account, password)
+            result = mail_sync.fetch_mailbox(account, password, folder_name)
         except Exception as error:
             category, message = errors.classify(error, account.imap_host)
             GLib.idle_add(self._on_sync_error, category, message)
@@ -1098,13 +1123,20 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._db.get_or_create_folder(
                 self._account_id, name, mail_sync.icon_for_folder(name)
             )
-        inbox = self._db.get_or_create_folder(
-            self._account_id, "INBOX", mail_sync.icon_for_folder("INBOX")
+        # Mirror the server's folder list, keeping only the local Outbox. This
+        # clears stale rows like a duplicate "INBOX" from earlier versions.
+        if result.folders:
+            self._db.prune_folders(
+                self._account_id, set(result.folders) | {"Outbox"}
+            )
+
+        target = self._db.get_or_create_folder(
+            self._account_id, result.folder, mail_sync.icon_for_folder(result.folder)
         )
         new_count = 0
         for message in result.messages:
             added = self._db.save_incoming_email(
-                folder_id=inbox.id,
+                folder_id=target.id,
                 server_id=message.uid,
                 sender=message.sender,
                 subject=message.subject,
@@ -1118,7 +1150,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             )
             if added and message.unread:
                 new_count += 1
-        self._db.reassign_conversations(inbox.id)
+        self._db.reassign_conversations(target.id)
 
         self._set_syncing(False)
         self._reload_folders()
@@ -1209,17 +1241,19 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     # row is suppressed so it doesn't rebuild the conversation list — callers
     # that want that refresh it explicitly.
     def _reload_folders(self) -> None:
-        selected = self.folder_list.get_selected_row()
-        index = selected.get_index() if selected is not None else 0
+        # Preserve the selection by folder id, not row index — pruning stale
+        # folders can shift the indices.
+        keep_id = self._current_folder.id if self._current_folder else None
 
         self._suppress_folder_refresh = True
         self._folders.remove_all()
-        for folder in self._db.folders_for_account(self._account_id):
+        target = 0
+        for i, folder in enumerate(self._db.folders_for_account(self._account_id)):
             self._folders.append(folder)
+            if folder.id == keep_id:
+                target = i
 
-        row = self.folder_list.get_row_at_index(index)
-        if row is None:
-            row = self.folder_list.get_row_at_index(0)
+        row = self.folder_list.get_row_at_index(target)
         if row is not None:
             self.folder_list.select_row(row)
         self._suppress_folder_refresh = False

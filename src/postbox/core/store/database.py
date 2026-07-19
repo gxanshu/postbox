@@ -196,6 +196,20 @@ class Database:
             icon_name=icon_name,
         )
 
+    def prune_folders(self, account_id: int, keep_names: set[str]) -> None:
+        """Delete an account's folders (and their emails) whose names aren't in
+        keep_names. Used to mirror the server's folder list and clear stale rows
+        such as a duplicate "INBOX" left by an earlier version."""
+        rows = self._conn.execute(
+            "SELECT id, name FROM folders WHERE account_id = ?", (account_id,)
+        ).fetchall()
+        for row in rows:
+            if row["name"] in keep_names:
+                continue
+            self._conn.execute("DELETE FROM emails WHERE folder_id = ?", (row["id"],))
+            self._conn.execute("DELETE FROM folders WHERE id = ?", (row["id"],))
+        self._conn.commit()
+
     # --- emails -----------------------------------------------------------
 
     def emails_in_folder(self, folder_id: int) -> list[Email]:

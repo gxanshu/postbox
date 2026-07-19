@@ -5,7 +5,7 @@ from gettext import gettext as _
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from . import mail_send
+from . import mail_send, mail_sync
 from .core import compose, secrets
 from .core.models.account import Account
 from .core.models.attachment import Attachment
@@ -132,7 +132,7 @@ class PostboxComposerWindow(Adw.Window):
     def _on_cancel_clicked(self, _button: Gtk.Button) -> None:
         if self._has_content():
             folder = self._db.get_or_create_folder(
-                self._account.id, "Drafts", "mail-drafts-symbolic"
+                self._account.id, "Drafts", mail_sync.icon_for_folder("Drafts")
             )
             msg = compose.build_mime_message(
                 self._account.email,
@@ -169,7 +169,7 @@ class PostboxComposerWindow(Adw.Window):
         # Save to Outbox before attempting to send -- a crash mid-send can
         # then never lose the message.
         outbox = self._db.get_or_create_folder(
-            self._account.id, "Outbox", "mail-outbox-symbolic"
+            self._account.id, "Outbox", mail_sync.icon_for_folder("Outbox")
         )
         row = self._db.save_email(
             outbox.id,
@@ -210,7 +210,7 @@ class PostboxComposerWindow(Adw.Window):
     def _on_send_done(self, email_id: int, subject: str, raw: bytes) -> bool:
         self._db.delete_email(email_id)
         sent = self._db.get_or_create_folder(
-            self._account.id, "Sent", "mail-sent-symbolic"
+            self._account.id, "Sent", mail_sync.icon_for_folder("Sent")
         )
         row = self._db.save_email(
             sent.id,

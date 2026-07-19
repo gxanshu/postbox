@@ -26,19 +26,37 @@ class MessageHeader:
 class SyncResult:
     folders: list[str] = field(default_factory=list)
     messages: list[MessageHeader] = field(default_factory=list)
+    folder: str = "INBOX"
+
+
+def inbox_name(folders: list[str]) -> str:
+    """The server's inbox mailbox. IMAP calls it INBOX but servers vary the
+    casing (Yahoo lists it as "Inbox"), so match by role and fall back to the
+    canonical name."""
+    for name in folders:
+        if role_for_folder(name) == "inbox":
+            return name
+    return "INBOX"
 
 
 def fetch_mailbox(
-    account: Account, password: str, limit: int = RECENT_LIMIT
+    account: Account,
+    password: str,
+    folder: str | None = None,
+    limit: int = RECENT_LIMIT,
 ) -> SyncResult:
-    """Connect, log in, and return the folder list + recent INBOX headers"""
+    """Connect, log in, and return the folder list + recent headers.
+
+    `folder` selects which mailbox to pull headers from; None means the inbox.
+    """
     session = ImapSession(account.imap_host, account.imap_port)
     session.connect()
 
     try:
         session.login(account.email, password)
         folders = session.list_folders()
-        exists = session.select("INBOX")
+        target = folder or inbox_name(folders)
+        exists = session.select(target)
         raw = session.fetch_recent_headers(exists, limit)
     finally:
         session.logout()
@@ -58,7 +76,7 @@ def fetch_mailbox(
         for item in raw
     ]
 
-    return SyncResult(folders, messages)
+    return SyncResult(folders, messages, target)
 
 
 def fetch_full_message(
@@ -134,19 +152,18 @@ def role_for_folder(name: str) -> str:
 
 
 def icon_for_folder(name: str) -> str:
-    """Pick a symbolic icon name for a mailbox (used in the sidebar)."""
-    lname = name.lower()
-    if lname == "inbox":
-        return "mail-inbox-symbolic"
-    if "sent" in lname:
-        return "mail-sent-symbolic"
-    if "draft" in lname:
-        return "mail-drafts-symbolic"
-    if "trash" in lname or "deleted" in lname:
-        return "user-trash-symbolic"
-    if "junk" in lname or "spam" in lname:
-        return "mail-mark-junk-symbolic"
-    return "folder-symbolic"
+    """Pick a symbolic icon name for a mailbox (used in the sidebar).
+
+    Only names that ship in the GNOME runtime's Adwaita icon theme are used;
+    mail-inbox/sent/drafts-symbolic are *not* in it and render as broken images.
+    """
+    return {
+        "inbox": "mail-unread-symbolic",
+        "sent": "mail-send-symbolic",
+        "drafts": "document-edit-symbolic",
+        "trash": "user-trash-symbolic",
+        "junk": "mail-mark-junk-symbolic",
+    }.get(role_for_folder(name), "folder-symbolic")
 
 
 def _clean_sender(value: str) -> str:
