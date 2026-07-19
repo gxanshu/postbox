@@ -3,15 +3,43 @@ using Adw 1;
 
 Adw.ShortcutsDialog shortcuts_dialog {
   Adw.ShortcutsSection {
-    title: _("Shortcuts");
+    title: _("General");
     Adw.ShortcutsItem {
     title: C_("shortcut window", "Show Shortcuts");
       action-name: "app.shortcuts";
     }
 
     Adw.ShortcutsItem {
+      title: C_("shortcut window", "New Window");
+      action-name: "app.new-window";
+    }
+
+    Adw.ShortcutsItem {
       title: C_("quit", "Quit");
       action-name: "app.quit";
+    }
+  }
+
+  Adw.ShortcutsSection {
+    title: _("Mail");
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Mark Read/Unread");
+      action-name: "win.toggle-read";
+    }
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Star");
+      action-name: "win.toggle-star";
+    }
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Archive");
+      action-name: "win.archive";
+    }
+
+    Adw.ShortcutsItem {
+      title: C_("shortcut window", "Delete");
+      action-name: "win.trash";
     }
   }
 }

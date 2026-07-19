@@ -196,6 +196,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         move.connect("activate", self._on_move)
         self.add_action(move)
 
+        # Ctrl-modified so they don't fire while typing in the search entry.
+        app = self.get_application()
+        for name, accels in (
+            ("win.toggle-read", ["<ctrl>i"]),
+            ("win.toggle-star", ["<ctrl>s"]),
+            ("win.archive", ["<ctrl>e"]),
+            ("win.trash", ["<ctrl>Delete"]),
+        ):
+            app.set_accels_for_action(name, accels)
+
     def _set_mail_actions_enabled(self, enabled: bool) -> None:
         for name in ("toggle-read", "toggle-star", "archive", "trash", "move"):
             action = self.lookup_action(name)
@@ -427,8 +437,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._toast(_("Move failed: {msg}").format(msg=message))
         return False
 
-    # Fill the Move menu with every folder except the current one.
     def _rebuild_move_menu(self) -> None:
+        self.move_button.set_menu_model(self._build_move_menu())
+
+    # A menu of every folder except the current one, each targeting win.move.
+    def _build_move_menu(self) -> Gio.Menu:
         menu = Gio.Menu()
         current_id = self._current_folder.id if self._current_folder else None
         for folder in self._db.folders_for_account(self._account_id):
@@ -439,7 +452,53 @@ class PostboxMainWindow(Adw.ApplicationWindow):
                 "win.move", GLib.Variant.new_string(folder.name)
             )
             menu.append_item(item)
-        self.move_button.set_menu_model(menu)
+        return menu
+
+    # Select the right-clicked row, then pop up its actions menu.
+    def _on_row_right_click(
+        self,
+        gesture: Gtk.GestureClick,
+        _n_press: int,
+        x: float,
+        y: float,
+        item: Gtk.ListItem,
+    ) -> None:
+        position = item.get_position()
+        if position == Gtk.INVALID_LIST_POSITION:
+            return
+        self._selection.set_selected(position)
+
+        conversation = self._selection.get_selected_item()
+        if not isinstance(conversation, Conversation):
+            return
+
+        popover = Gtk.PopoverMenu.new_from_model(self._context_menu(conversation))
+        popover.set_parent(gesture.get_widget())
+        popover.set_has_arrow(False)
+        popover.connect("closed", lambda p: p.unparent())
+
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+        popover.set_pointing_to(rect)
+        popover.popup()
+
+    def _context_menu(self, conversation: Conversation) -> Gio.Menu:
+        menu = Gio.Menu()
+
+        flags = Gio.Menu()
+        read = _("Mark Unread") if not conversation.unread else _("Mark Read")
+        star = _("Unstar") if conversation.starred else _("Star")
+        flags.append(read, "win.toggle-read")
+        flags.append(star, "win.toggle-star")
+        menu.append_section(None, flags)
+
+        actions = Gio.Menu()
+        actions.append(_("Archive"), "win.archive")
+        actions.append(_("Delete"), "win.trash")
+        actions.append_submenu(_("Move to"), self._build_move_menu())
+        menu.append_section(None, actions)
+
+        return menu
 
     # A tiny bit of app CSS: the accent-coloured unread dot and a bold sender
     # name. Loaded from a string so we don't need another resource file yet.
@@ -722,9 +781,14 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         factory = Gtk.SignalListItemFactory()
 
         # setup: build one empty widget. Runs rarely (only when GTK needs a new
-        # reusable row), so it's fine to allocate here.
+        # reusable row), so it's fine to allocate here. A right-click gesture
+        # opens the actions menu for that row.
         def on_setup(_factory: Gtk.SignalListItemFactory, item: Gtk.ListItem) -> None:
-            item.set_child(ConversationRow())
+            row = ConversationRow()
+            gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+            gesture.connect("pressed", self._on_row_right_click, item)
+            row.add_controller(gesture)
+            item.set_child(row)
 
         # bind: fill an existing widget from its item. Runs often (every
         # scroll), so keep it cheap — just copy fields across.
