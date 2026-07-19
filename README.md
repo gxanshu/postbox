@@ -15,6 +15,10 @@ accumulated complexity. It's built and shipped as a Flatpak.
   <img src="data/screenshots/main-window.png" alt="Postbox showing the three-pane layout with folders, conversations, and reader">
 </div>
 
+> **Heavy development.** Postbox is under active development and can have bugs or
+> unexpected behavior. If you hit one, please [report it on the GitHub issues
+> panel](https://github.com/gxanshu/postbox/issues) — it helps a lot.
+
 ## Features
 
 - Multiple IMAP/SMTP accounts, with passwords stored in the system keyring
@@ -25,6 +29,7 @@ accumulated complexity. It's built and shipped as a Flatpak.
 - Compose, reply, and forward, with Cc/Bcc, a signature, and a Drafts/Outbox that never
   loses a message
 - Archive, trash, move, and undo, with desktop notifications for new mail
+- Many more are coming soon
 
 ## Building & running
 
@@ -44,6 +49,12 @@ comes from the GNOME SDK.
 
 GTK 4 · libadwaita · Blueprint (`.blp`) UI · WebKitGTK for HTML mail · SQLite (with FTS5
 for search) · Python's stdlib `imaplib`/`smtplib` for networking · libsecret for credentials.
+
+## Contributing
+
+AI use is welcome here — Claude Code helped a lot in building Postbox. That said, I highly
+recommend against letting AI write code on autopilot. Use it if you want, but you must
+understand every line you submit.
 
 ## License
 
