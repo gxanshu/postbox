@@ -7,7 +7,14 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
   default-height: 900;
 
   content: Adw.ToastOverlay toast_overlay {
-    child: Gtk.Stack main_stack {
+    child: Gtk.Box {
+      orientation: vertical;
+
+      Adw.Banner connection_banner {}
+
+      Gtk.Stack main_stack {
+        vexpand: true;
+
     StackPage {
       name: "no-account";
       child: Adw.StatusPage {
@@ -233,6 +240,7 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
         };
       };
     }
+      }
     };
   };
 

@@ -73,6 +73,7 @@ python_installation.install_sources(postbox_core_store_sources, subdir: 'postbox
 
 postbox_core_net_sources = [
   'postbox/core/net/__init__.py',
+  'postbox/core/net/errors.py',
   'postbox/core/net/imap_session.py',
   'postbox/core/net/smtp_session.py',
 ]

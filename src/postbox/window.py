@@ -34,6 +34,7 @@ from .composer_window import PostboxComposerWindow
 from .conversation_row import ConversationRow
 from .core import compose, secrets
 from .core.models.account import Account
+from .core.net import errors
 from .core.models.attachment import Attachment
 from .core.models.conversation import Conversation
 from .core.models.email import Email
@@ -69,6 +70,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     star_button: Gtk.Button = Gtk.Template.Child()
     move_button: Gtk.MenuButton = Gtk.Template.Child()
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
+    connection_banner: Adw.Banner = Gtk.Template.Child()
 
     def __init__(
         self, app: Gtk.Application, db: Database, settings: Gio.Settings
@@ -104,6 +106,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         # doesn't stack duplicate handlers or CSS providers.
         self._load_styles()
         self.folder_list.connect("row-selected", self._on_folder_selected)
+
+        self.connection_banner.connect("button-clicked", self._on_banner_retry)
+        self._network = Gio.NetworkMonitor.get_default()
+        self._online = self._network.get_network_available()
+        self._network_handler = self._network.connect(
+            "network-changed", self._on_network_changed
+        )
+        self.connect("close-request", self._on_close_request)
+        if not self._online:
+            self._show_offline_banner()
 
         accounts = self._db.accounts()
         if not accounts:
@@ -1008,7 +1020,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         try:
             result = mail_sync.fetch_mailbox(account, password)
         except Exception as error:
-            GLib.idle_add(self._on_sync_error, str(error))
+            category, message = errors.classify(error, account.imap_host)
+            GLib.idle_add(self._on_sync_error, category, message)
             return
         GLib.idle_add(self._on_sync_done, result)
 
@@ -1043,6 +1056,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._reload_folders()
         self._refresh_conversations()
         self._set_syncing(False)
+        self.connection_banner.set_revealed(False)
         self._toast(_("Synced {n} messages.").format(n=len(result.messages)))
 
         # Only nag about new mail when the user isn't already looking.
@@ -1064,10 +1078,47 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         notification.set_body(body)
         app.send_notification("new-mail", notification)
 
-    def _on_sync_error(self, message: str) -> bool:
+    def _on_sync_error(self, category: str, message: str) -> bool:
         self._set_syncing(False)
-        self._toast(_("Sync failed: {msg}").format(msg=message))
-        print("Sync failed:", message)
+        # Auth failures aren't worth a Retry button (same password); everything
+        # else is a transient connection problem the user can retry.
+        button = "" if category == "auth" else _("Retry")
+        self._show_connection_banner(message, button)
+        return False
+
+    # --- connection banner / offline handling -----------------------------
+
+    def _show_connection_banner(self, title: str, button_label: str = "") -> None:
+        self.connection_banner.set_title(title)
+        self.connection_banner.set_button_label(button_label)
+        self.connection_banner.set_revealed(True)
+
+    def _show_offline_banner(self) -> None:
+        self._show_connection_banner(
+            _("You're offline. Postbox will reconnect when your connection returns.")
+        )
+
+    def _on_banner_retry(self, _banner: Adw.Banner) -> None:
+        self.connection_banner.set_revealed(False)
+        if getattr(self, "_account_id", None) is not None:
+            self._drain_outbox()
+            self._start_sync()
+
+    # network-changed fires on any change; act only on real online/offline flips.
+    def _on_network_changed(self, _monitor: Gio.NetworkMonitor, available: bool) -> None:
+        if available == self._online:
+            return
+        self._online = available
+        if not available:
+            self._show_offline_banner()
+            return
+        self.connection_banner.set_revealed(False)
+        if getattr(self, "_account_id", None) is not None:
+            self._drain_outbox()
+            self._start_sync()
+
+    def _on_close_request(self, _window: Gtk.Window) -> bool:
+        self._network.disconnect(self._network_handler)
         return False
 
     def _set_syncing(self, syncing: bool) -> None:
