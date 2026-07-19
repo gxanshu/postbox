@@ -922,8 +922,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         inbox = self._db.get_or_create_folder(
             self._account_id, "INBOX", mail_sync.icon_for_folder("INBOX")
         )
+        new_count = 0
         for message in result.messages:
-            self._db.save_incoming_email(
+            added = self._db.save_incoming_email(
                 folder_id=inbox.id,
                 server_id=message.uid,
                 sender=message.sender,
@@ -931,17 +932,36 @@ class PostboxMainWindow(Adw.ApplicationWindow):
                 preview=message.preview,
                 date=message.date,
                 unread=message.unread,
+                starred=message.starred,
                 message_id=message.message_id,
                 in_reply_to=message.in_reply_to,
                 references=message.references,
             )
+            if added and message.unread:
+                new_count += 1
         self._db.reassign_conversations(inbox.id)
 
         self._reload_folders()
         self._refresh_conversations()
         self._set_syncing(False)
         self._toast(_("Synced {n} messages.").format(n=len(result.messages)))
+
+        # Only nag about new mail when the user isn't already looking.
+        if new_count and not self.is_active():
+            self._notify_new_mail(new_count)
         return False
+
+    def _notify_new_mail(self, count: int) -> None:
+        app = self.get_application()
+        if app is None:
+            return
+        if count == 1:
+            body = _("1 new message")
+        else:
+            body = _("{n} new messages").format(n=count)
+        notification = Gio.Notification.new(_("New mail"))
+        notification.set_body(body)
+        app.send_notification("new-mail", notification)
 
     def _on_sync_error(self, message: str) -> bool:
         self._set_syncing(False)
