@@ -1,8 +1,8 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $PostboxMainWindow: Adw.ApplicationWindow {
-  title: _("Postbox");
+template $PostcardMainWindow: Adw.ApplicationWindow {
+  title: _("Postcard");
   default-width: 1600;
   default-height: 900;
 
@@ -23,7 +23,7 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
 
         content: Adw.StatusPage {
           icon-name: "mail-unread-symbolic";
-          title: _("Welcome to Postbox");
+          title: _("Welcome to Postcard");
           description: _("Add a mail account to get started.");
           child: Gtk.Button add_account_button {
             label: _("Add Account");
@@ -80,7 +80,7 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
         };
 
         content: Adw.NavigationPage {
-          title: _("Postbox");
+          title: _("Postcard");
           child: Adw.NavigationSplitView inner_split {
             sidebar-width-fraction: 0.38;
             min-sidebar-width: 180;
@@ -313,7 +313,7 @@ menu primary_menu {
       action: "app.shortcuts";
     }
     item {
-      label: _("_About Postbox");
+      label: _("_About Postcard");
       action: "app.about";
     }
   }

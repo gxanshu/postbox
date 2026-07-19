@@ -28,24 +28,24 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import Adw, Gio, Gtk
 
-from .accounts_dialog import PostboxAccountsDialog
+from .accounts_dialog import PostcardAccountsDialog
 from .core.store.database import Database
-from .preferences_dialog import PostboxPreferencesDialog
-from .window import PostboxMainWindow
+from .preferences_dialog import PostcardPreferencesDialog
+from .window import PostcardMainWindow
 
 
-class PostboxApplication(Adw.Application):
-    __gtype_name__ = "PostboxApplication"
+class PostcardApplication(Adw.Application):
+    __gtype_name__ = "PostcardApplication"
 
     def __init__(self, version: str) -> None:
         super().__init__(
-            application_id="in.gxanshu.postbox",
+            application_id="in.gxanshu.postcard",
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
-            resource_base_path="/in/gxanshu/postbox",
+            resource_base_path="/in/gxanshu/postcard",
         )
         self.version = version
         self.db = Database()
-        self.settings = Gio.Settings(schema_id="in.gxanshu.postbox")
+        self.settings = Gio.Settings(schema_id="in.gxanshu.postcard")
 
         self._create_action("about", self.on_about_action)
         self._create_action(
@@ -61,7 +61,7 @@ class PostboxApplication(Adw.Application):
         self._create_action("accounts", self.on_accounts_action)
 
     def do_activate(self) -> None:
-        win = self.props.active_window or PostboxMainWindow(
+        win = self.props.active_window or PostcardMainWindow(
             self, self.db, self.settings
         )
         win.present()
@@ -81,8 +81,8 @@ class PostboxApplication(Adw.Application):
 
     def on_about_action(self, *args: object) -> None:
         about = Adw.AboutDialog(
-            application_name="Postbox",
-            application_icon="in.gxanshu.postbox",
+            application_name="Postcard",
+            application_icon="in.gxanshu.postcard",
             developer_name="Anshu",
             translator_credits=_("translator-credits"),
             version=self.version,
@@ -92,22 +92,22 @@ class PostboxApplication(Adw.Application):
         about.present(self.props.active_window)
 
     def on_preferences_action(self, *args: object) -> None:
-        dialog = PostboxPreferencesDialog(self.settings)
+        dialog = PostcardPreferencesDialog(self.settings)
         dialog.present(self.props.active_window)
 
     def on_new_window_action(self, *args: object) -> None:
-        PostboxMainWindow(self, self.db, self.settings).present()
+        PostcardMainWindow(self, self.db, self.settings).present()
 
     def on_shortcuts_action(self, *args: object) -> None:
         builder = Gtk.Builder.new_from_resource(
-            "/in/gxanshu/postbox/ui/shortcuts-dialog.ui"
+            "/in/gxanshu/postcard/ui/shortcuts-dialog.ui"
         )
         dialog = cast(Adw.ShortcutsDialog, builder.get_object("shortcuts_dialog"))
         dialog.present(self.props.active_window)
 
     def on_accounts_action(self, *args: object) -> None:
-        dialog = PostboxAccountsDialog(self.db)
+        dialog = PostcardAccountsDialog(self.db)
         window = self.props.active_window
-        if isinstance(window, PostboxMainWindow):
+        if isinstance(window, PostcardMainWindow):
             dialog.connect("closed", lambda *_: window.reload_accounts())
         dialog.present(window)

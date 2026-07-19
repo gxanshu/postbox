@@ -1,9 +1,9 @@
 {
-  "id": "in.gxanshu.postbox",
+  "id": "in.gxanshu.postcard",
   "runtime": "org.gnome.Platform",
   "runtime-version": "50",
   "sdk": "org.gnome.Sdk",
-  "command": "postbox",
+  "command": "postcard",
   "finish-args": [
     "--share=network",
     "--share=ipc",
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "name": "postbox",
+      "name": "postcard",
       "builddir": true,
       "buildsystem": "meson",
       "sources": [
@@ -52,7 +52,7 @@
             ".flatpak",
             ".flatpak-builder",
             ".git",
-            "postbox-*.flatpak"
+            "postcard-*.flatpak"
           ]
         }
       ],

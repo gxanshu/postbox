@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>in.gxanshu.postbox</id>
+  <id>in.gxanshu.postcard</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
 
-  <name>Postbox</name>
+  <name>Postcard</name>
   <summary>A modern email client for GNOME</summary>
   <description>
     <p>
-      Postbox is a fast, modern email client for the GNOME desktop, built with GTK 4 and
+      Postcard is a fast, modern email client for the GNOME desktop, built with GTK 4 and
       libadwaita. It follows the same three-pane layout as Geary — folders, conversations,
       and reading pane — with a clean, native feel and nothing to configure to get started
       beyond your account details.
@@ -30,12 +30,12 @@
     <name>Anshu</name>
   </developer>
 
-  <url type="homepage">https://github.com/gxanshu/postbox</url>
-  <url type="vcs-browser">https://github.com/gxanshu/postbox</url>
-  <url type="bugtracker">https://github.com/gxanshu/postbox/issues</url>
+  <url type="homepage">https://github.com/gxanshu/postcard</url>
+  <url type="vcs-browser">https://github.com/gxanshu/postcard</url>
+  <url type="bugtracker">https://github.com/gxanshu/postcard/issues</url>
 
-  <translation type="gettext">postbox</translation>
-  <launchable type="desktop-id">in.gxanshu.postbox.desktop</launchable>
+  <translation type="gettext">postcard</translation>
+  <launchable type="desktop-id">in.gxanshu.postcard.desktop</launchable>
   <content_rating type="oars-1.1" />
 
   <branding>
@@ -46,7 +46,7 @@
   <screenshots>
     <screenshot type="default">
       <caption>The three-pane layout with folders, conversations, and reader</caption>
-      <image>https://raw.githubusercontent.com/gxanshu/postbox/main/data/screenshots/main-window.png</image>
+      <image>https://raw.githubusercontent.com/gxanshu/postcard/main/data/screenshots/main-window.png</image>
     </screenshot>
   </screenshots>
 

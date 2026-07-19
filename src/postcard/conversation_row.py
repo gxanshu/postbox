@@ -8,7 +8,7 @@ from .core.models.conversation import Conversation
 
 
 class ConversationRow(Gtk.Box):
-    __gtype_name__ = "PostboxConversationRow"
+    __gtype_name__ = "PostcardConversationRow"
 
     def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)

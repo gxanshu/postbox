@@ -1,4 +1,4 @@
-application_id = 'in.gxanshu.postbox'
+application_id = 'in.gxanshu.postcard'
 
 # App icon (rasterized from the project logo) installed at the standard
 # hicolor sizes. The shell/desktop picks the best size by name automatically.

@@ -2,7 +2,7 @@ from gi.repository import GObject
 
 
 class Attachment(GObject.Object):
-    __gtype_name__ = "PostboxAttachment"
+    __gtype_name__ = "PostcardAttachment"
 
     def __init__(self, filename: str, mime_type: str, content: bytes) -> None:
         super().__init__()

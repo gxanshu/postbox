@@ -9,7 +9,7 @@ from gi.repository import GObject
 
 
 class Email(GObject.Object):
-    __gtype_name__ = "PostboxEmail"
+    __gtype_name__ = "PostcardEmail"
 
     def __init__(
         self,

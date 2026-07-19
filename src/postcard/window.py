@@ -28,9 +28,9 @@ from gettext import gettext as _
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from . import mail_send, mail_sync
-from .account_dialog import PostboxAccountDialog
-from .accounts_dialog import PostboxAccountsDialog
-from .composer_window import PostboxComposerWindow
+from .account_dialog import PostcardAccountDialog
+from .accounts_dialog import PostcardAccountsDialog
+from .composer_window import PostcardComposerWindow
 from .conversation_row import ConversationRow
 from .core import compose, secrets
 from .core.models.account import Account
@@ -43,9 +43,9 @@ from .core.store.database import Database
 from .message_view import MessageView
 
 
-@Gtk.Template(resource_path="/in/gxanshu/postbox/ui/main-window.ui")
-class PostboxMainWindow(Adw.ApplicationWindow):
-    __gtype_name__ = "PostboxMainWindow"
+@Gtk.Template(resource_path="/in/gxanshu/postcard/ui/main-window.ui")
+class PostcardMainWindow(Adw.ApplicationWindow):
+    __gtype_name__ = "PostcardMainWindow"
 
     # These fields are filled in automatically from the widgets we named in
     # main-window.blp. The attribute name must match the id in the Blueprint
@@ -236,7 +236,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     def _on_switcher_manage(self, _button: Gtk.Button) -> None:
         self.account_switcher.popdown()
-        dialog = PostboxAccountsDialog(self._db)
+        dialog = PostcardAccountsDialog(self._db)
         dialog.connect("closed", lambda *_: self.reload_accounts())
         dialog.present(self)
 
@@ -254,11 +254,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._load_mail_view(accounts[0])
 
     def _on_add_account_clicked(self, _button: Gtk.Button) -> None:
-        dialog = PostboxAccountDialog(self._db)
+        dialog = PostcardAccountDialog(self._db)
         dialog.connect("account-added", self._on_account_added)
         dialog.present(self)
 
-    def _on_account_added(self, _dialog: PostboxAccountDialog) -> None:
+    def _on_account_added(self, _dialog: PostcardAccountDialog) -> None:
         # Load the newly added account (highest id sorts last).
         self._load_mail_view(self._db.accounts()[-1])
 
@@ -304,7 +304,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._open_composer(subject=subject, body=body)
 
     def _open_composer(self, to: str = "", subject: str = "", body: str = "") -> None:
-        composer = PostboxComposerWindow(
+        composer = PostcardComposerWindow(
             self.get_application(),
             self._db,
             self._account,
@@ -315,7 +315,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         composer.connect("finished", self._on_composer_finished)
         composer.present()
 
-    def _on_composer_finished(self, _composer: PostboxComposerWindow) -> None:
+    def _on_composer_finished(self, _composer: PostcardComposerWindow) -> None:
         self._reload_folders()
         self._refresh_conversations()
         self._drain_outbox()
@@ -1276,7 +1276,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     def _show_offline_banner(self) -> None:
         self._show_connection_banner(
-            _("You're offline. Postbox will reconnect when your connection returns.")
+            _("You're offline. Postcard will reconnect when your connection returns.")
         )
 
     def _on_banner_retry(self, _banner: Adw.Banner) -> None:

@@ -6,9 +6,9 @@ from gi.repository import Adw, Gio, Gtk
 INTERVAL_MINUTES = [0, 5, 15, 30, 60]
 
 
-@Gtk.Template(resource_path="/in/gxanshu/postbox/ui/preferences-dialog.ui")
-class PostboxPreferencesDialog(Adw.PreferencesDialog):
-    __gtype_name__ = "PostboxPreferencesDialog"
+@Gtk.Template(resource_path="/in/gxanshu/postcard/ui/preferences-dialog.ui")
+class PostcardPreferencesDialog(Adw.PreferencesDialog):
+    __gtype_name__ = "PostcardPreferencesDialog"
 
     notifications_row: Adw.SwitchRow = Gtk.Template.Child()
     images_row: Adw.SwitchRow = Gtk.Template.Child()

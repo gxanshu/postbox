@@ -1,5 +1,5 @@
 {
-  // Project-local Zed settings for the Postbox GTK/libadwaita app.
+  // Project-local Zed settings for the Postcard GTK/libadwaita app.
   "languages": {
     "Python": {
       "tab_size": 4,

@@ -4,7 +4,7 @@ from .email import Email
 
 
 class Conversation(GObject.Object):
-    __gtype_name__ = "PostboxConversation"
+    __gtype_name__ = "PostcardConversation"
 
     def __init__(self, emails: list[Email]) -> None:
         super().__init__()

@@ -16,7 +16,7 @@ LoadCallback = Callable[[bytes | None, str | None], None]
 
 
 class MessageView(Gtk.Box):
-    __gtype_name__ = "PostboxMessageView"
+    __gtype_name__ = "PostcardMessageView"
 
     def __init__(
         self,

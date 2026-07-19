@@ -9,7 +9,7 @@ from gi.repository import GObject
 
 
 class Folder(GObject.Object):
-    __gtype_name__ = "PostboxFolder"
+    __gtype_name__ = "PostcardFolder"
 
     def __init__(self, id: int, account_id: int, name: str, icon_name: str) -> None:
         super().__init__()

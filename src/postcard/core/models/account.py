@@ -8,7 +8,7 @@ from gi.repository import GObject
 
 
 class Account(GObject.Object):
-    __gtype_name__ = "PostboxAccount"
+    __gtype_name__ = "PostcardAccount"
 
     def __init__(
         self,

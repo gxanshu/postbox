@@ -12,9 +12,9 @@ from .core.models.attachment import Attachment
 from .core.store.database import Database
 
 
-@Gtk.Template(resource_path="/in/gxanshu/postbox/ui/composer-window.ui")
-class PostboxComposerWindow(Adw.Window):
-    __gtype_name__ = "PostboxComposerWindow"
+@Gtk.Template(resource_path="/in/gxanshu/postcard/ui/composer-window.ui")
+class PostcardComposerWindow(Adw.Window):
+    __gtype_name__ = "PostcardComposerWindow"
 
     cancel_button: Gtk.Button = Gtk.Template.Child()
     send_button: Gtk.Button = Gtk.Template.Child()

@@ -2,14 +2,14 @@ from gettext import gettext as _
 
 from gi.repository import Adw, Gtk
 
-from .account_dialog import PostboxAccountDialog
+from .account_dialog import PostcardAccountDialog
 from .core import secrets
 from .core.store.database import Database
 
 
-@Gtk.Template(resource_path="/in/gxanshu/postbox/ui/accounts-dialog.ui")
-class PostboxAccountsDialog(Adw.Dialog):
-    __gtype_name__ = "PostboxAccountsDialog"
+@Gtk.Template(resource_path="/in/gxanshu/postcard/ui/accounts-dialog.ui")
+class PostcardAccountsDialog(Adw.Dialog):
+    __gtype_name__ = "PostcardAccountsDialog"
 
     accounts_group: Adw.PreferencesGroup = Gtk.Template.Child()
     add_button: Gtk.Button = Gtk.Template.Child()
@@ -48,6 +48,6 @@ class PostboxAccountsDialog(Adw.Dialog):
         self._reload()
 
     def _on_add_clicked(self, _button: Gtk.Button) -> None:
-        dialog = PostboxAccountDialog(self._db)
+        dialog = PostcardAccountDialog(self._db)
         dialog.connect("account-added", lambda _d: self._reload())
         dialog.present(self)

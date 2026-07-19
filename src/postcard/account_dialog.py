@@ -4,9 +4,9 @@ from .core import secrets
 from .core.store.database import Database
 
 
-@Gtk.Template(resource_path="/in/gxanshu/postbox/ui/account-dialog.ui")
-class PostboxAccountDialog(Adw.Dialog):
-    __gtype_name__ = "PostboxAccountDialog"
+@Gtk.Template(resource_path="/in/gxanshu/postcard/ui/account-dialog.ui")
+class PostcardAccountDialog(Adw.Dialog):
+    __gtype_name__ = "PostcardAccountDialog"
 
     cancel_button: Gtk.Button = Gtk.Template.Child()
     add_button: Gtk.Button = Gtk.Template.Child()

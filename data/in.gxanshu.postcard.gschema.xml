@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="postbox">
-	<schema id="in.gxanshu.postbox" path="/in/gxanshu/postbox/">
+<schemalist gettext-domain="postcard">
+	<schema id="in.gxanshu.postcard" path="/in/gxanshu/postcard/">
 		<key name="notifications" type="b">
 			<default>true</default>
 			<summary>Notify about new mail</summary>

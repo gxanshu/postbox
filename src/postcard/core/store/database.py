@@ -35,9 +35,9 @@ def _arrival_key(mail: Email) -> int:
 class Database:
     def __init__(self, path: str | None = None) -> None:
         if path is None:
-            data_dir = os.path.join(GLib.get_user_data_dir(), "postbox")
+            data_dir = os.path.join(GLib.get_user_data_dir(), "postcard")
             os.makedirs(data_dir, exist_ok=True)
-            path = os.path.join(data_dir, "postbox.db")
+            path = os.path.join(data_dir, "postcard.db")
 
         self._conn = sqlite3.connect(path)
         self._conn.row_factory = sqlite3.Row

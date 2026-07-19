@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/in/gxanshu/postbox">
+  <gresource prefix="/in/gxanshu/postcard">
     <file preprocess="xml-stripblanks">ui/main-window.ui</file>
     <file preprocess="xml-stripblanks">ui/shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">ui/account-dialog.ui</file>

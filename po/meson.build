@@ -1,1 +1,1 @@
-i18n.gettext('postbox', preset: 'glib')
+i18n.gettext('postcard', preset: 'glib')

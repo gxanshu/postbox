@@ -22,68 +22,68 @@ blueprints = custom_target('blueprints',
   ],
 )
 
-gnome.compile_resources('postbox',
-  'postbox.gresource.xml',
+gnome.compile_resources('postcard',
+  'postcard.gresource.xml',
   gresource_bundle: true,
   install: true,
   install_dir: pkgdatadir,
   dependencies: blueprints,
 )
 
-postbox_sources = [
-  'postbox/__init__.py',
-  'postbox/main.py',
-  'postbox/application.py',
-  'postbox/window.py',
-  'postbox/conversation_row.py',
-  'postbox/message_view.py',
-  'postbox/account_dialog.py',
-  'postbox/accounts_dialog.py',
-  'postbox/composer_window.py',
-  'postbox/preferences_dialog.py',
-  'postbox/mail_sync.py',
-  'postbox/mail_send.py',
+postcard_sources = [
+  'postcard/__init__.py',
+  'postcard/main.py',
+  'postcard/application.py',
+  'postcard/window.py',
+  'postcard/conversation_row.py',
+  'postcard/message_view.py',
+  'postcard/account_dialog.py',
+  'postcard/accounts_dialog.py',
+  'postcard/composer_window.py',
+  'postcard/preferences_dialog.py',
+  'postcard/mail_sync.py',
+  'postcard/mail_send.py',
 ]
-python_installation.install_sources(postbox_sources, subdir: 'postbox')
+python_installation.install_sources(postcard_sources, subdir: 'postcard')
 
-postbox_core_sources = [
-  'postbox/core/__init__.py',
-  'postbox/core/secrets.py',
-  'postbox/core/compose.py',
-  'postbox/core/threader.py',
+postcard_core_sources = [
+  'postcard/core/__init__.py',
+  'postcard/core/secrets.py',
+  'postcard/core/compose.py',
+  'postcard/core/threader.py',
 ]
 
-python_installation.install_sources(postbox_core_sources, subdir: 'postbox/core')
+python_installation.install_sources(postcard_core_sources, subdir: 'postcard/core')
 
-postbox_core_models_sources = [
-  'postbox/core/models/__init__.py',
-  'postbox/core/models/account.py',
-  'postbox/core/models/folder.py',
-  'postbox/core/models/email.py',
-  'postbox/core/models/conversation.py',
-  'postbox/core/models/attachment.py',
+postcard_core_models_sources = [
+  'postcard/core/models/__init__.py',
+  'postcard/core/models/account.py',
+  'postcard/core/models/folder.py',
+  'postcard/core/models/email.py',
+  'postcard/core/models/conversation.py',
+  'postcard/core/models/attachment.py',
 ]
-python_installation.install_sources(postbox_core_models_sources, subdir: 'postbox/core/models')
+python_installation.install_sources(postcard_core_models_sources, subdir: 'postcard/core/models')
 
-postbox_core_store_sources = [
-  'postbox/core/store/__init__.py',
-  'postbox/core/store/database.py',
+postcard_core_store_sources = [
+  'postcard/core/store/__init__.py',
+  'postcard/core/store/database.py',
 ]
-python_installation.install_sources(postbox_core_store_sources, subdir: 'postbox/core/store')
+python_installation.install_sources(postcard_core_store_sources, subdir: 'postcard/core/store')
 
-postbox_core_net_sources = [
-  'postbox/core/net/__init__.py',
-  'postbox/core/net/errors.py',
-  'postbox/core/net/imap_session.py',
-  'postbox/core/net/smtp_session.py',
+postcard_core_net_sources = [
+  'postcard/core/net/__init__.py',
+  'postcard/core/net/errors.py',
+  'postcard/core/net/imap_session.py',
+  'postcard/core/net/smtp_session.py',
 ]
-python_installation.install_sources(postbox_core_net_sources, subdir: 'postbox/core/net')
+python_installation.install_sources(postcard_core_net_sources, subdir: 'postcard/core/net')
 
-postbox_core_mime_sources = [
-  'postbox/core/mime/__init__.py',
-  'postbox/core/mime/message_parser.py',
+postcard_core_mime_sources = [
+  'postcard/core/mime/__init__.py',
+  'postcard/core/mime/message_parser.py',
 ]
-python_installation.install_sources(postbox_core_mime_sources, subdir: 'postbox/core/mime')
+python_installation.install_sources(postcard_core_mime_sources, subdir: 'postcard/core/mime')
 
 conf = configuration_data()
 conf.set('PYTHON', python_installation.full_path())
@@ -92,8 +92,8 @@ conf.set('localedir', get_option('prefix') / get_option('localedir'))
 conf.set('pkgdatadir', pkgdatadir)
 
 configure_file(
-  input: 'postbox.in',
-  output: 'postbox',
+  input: 'postcard.in',
+  output: 'postcard',
   configuration: conf,
   install: true,
   install_dir: get_option('bindir'),

@@ -19,9 +19,9 @@
 
 import sys
 
-from .application import PostboxApplication
+from .application import PostcardApplication
 
 
 def main(version: str) -> int:
-    app = PostboxApplication(version)
+    app = PostcardApplication(version)
     return app.run(sys.argv)
