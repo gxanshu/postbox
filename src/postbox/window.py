@@ -38,6 +38,7 @@ from .core import compose, secrets
 from .core.mime import message_parser
 from .core.models.account import Account
 from .core.models.attachment import Attachment
+from .core.models.conversation import Conversation
 from .core.models.email import Email
 from .core.models.folder import Folder
 from .core.store.database import Database
@@ -231,11 +232,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         assert isinstance(folder, Folder)
         self._current_folder = folder
 
-        emails = Gio.ListStore(item_type=Email)
-        for email in self._db.emails_in_folder(folder.id):
-            emails.append(email)
+        conversations = Gio.ListStore(item_type=Conversation)
+        for conversation in self._db.conversations_in_folder(folder.id):
+            conversations.append(conversation)
 
-        self._selection.set_model(emails)
+        self._selection.set_model(conversations)
         self._selection.unselect_all()
         self.reader_stack.set_visible_child_name("empty")
 
@@ -261,11 +262,12 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self.reply_button.set_sensitive(False)
         self.forward_button.set_sensitive(False)
 
-        email = self._selection.get_selected_item()
-        if not isinstance(email, Email):
+        conversation = self._selection.get_selected_item()
+        if not isinstance(conversation, Conversation):
             self.reader_stack.set_visible_child_name("empty")
             return
 
+        email = conversation.latest
         self.reader_avatar.set_text(email.sender)
         self.reader_sender.set_label(email.sender)
         self.reader_date.set_label(email.date)
@@ -416,10 +418,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         # scroll), so keep it cheap — just copy fields across.
         def on_bind(_factory: Gtk.SignalListItemFactory, item: Gtk.ListItem) -> None:
             row = item.get_child()
-            email = item.get_item()
+            conversation = item.get_item()
             assert isinstance(row, ConversationRow)
-            assert isinstance(email, Email)
-            row.bind(email)
+            assert isinstance(conversation, Conversation)
+            row.bind(conversation)
 
         factory.connect("setup", on_setup)
         factory.connect("bind", on_bind)

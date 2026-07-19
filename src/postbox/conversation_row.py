@@ -4,7 +4,7 @@
 
 from gi.repository import Adw, Gtk, Pango
 
-from .core.models.email import Email
+from .core.models.conversation import Conversation
 
 
 class ConversationRow(Gtk.Box):
@@ -56,11 +56,15 @@ class ConversationRow(Gtk.Box):
         self._unread_dot.add_css_class("unread-dot")
         bottom.append(self._unread_dot)
 
-    # Fill this row from an email. Called every time the row is (re)used.
-    def bind(self, email: Email) -> None:
-        self._avatar.set_text(email.sender)
-        self._sender_label.set_label(email.sender)
-        self._date_label.set_label(email.date)
-        self._subject_label.set_label(email.subject)
-        self._preview_label.set_label(email.preview)
-        self._unread_dot.set_visible(email.unread)
+    # Fill this row from a conversation. Called every time the row is (re)used.
+    def bind(self, conversation: Conversation) -> None:
+        subject = conversation.subject
+        if conversation.count > 1:
+            subject = f"{subject}  ({conversation.count})"
+
+        self._avatar.set_text(conversation.latest.sender)
+        self._sender_label.set_label(conversation.participants)
+        self._date_label.set_label(conversation.date)
+        self._subject_label.set_label(subject)
+        self._preview_label.set_label(conversation.preview)
+        self._unread_dot.set_visible(conversation.unread)
