@@ -27,6 +27,8 @@ class SyncResult:
     folders: list[str] = field(default_factory=list)
     messages: list[MessageHeader] = field(default_factory=list)
     folder: str = "INBOX"
+    exists: int = 0  # total messages in the selected mailbox
+    offset: int = 0  # how far back from the newest this fetch reached
 
 
 def inbox_name(folders: list[str]) -> str:
@@ -44,10 +46,13 @@ def fetch_mailbox(
     password: str,
     folder: str | None = None,
     limit: int = RECENT_LIMIT,
+    offset: int = 0,
 ) -> SyncResult:
     """Connect, log in, and return the folder list + recent headers.
 
     `folder` selects which mailbox to pull headers from; None means the inbox.
+    `offset` pages backwards: 0 is the newest `limit`, `limit` is the page
+    before that (used to load older mail on scroll).
     """
     session = ImapSession(account.imap_host, account.imap_port)
     session.connect()
@@ -57,7 +62,7 @@ def fetch_mailbox(
         folders = session.list_folders()
         target = folder or inbox_name(folders)
         exists = session.select(target)
-        raw = session.fetch_recent_headers(exists, limit)
+        raw = session.fetch_recent_headers(exists, limit, offset)
     finally:
         session.logout()
 
@@ -76,7 +81,7 @@ def fetch_mailbox(
         for item in raw
     ]
 
-    return SyncResult(folders, messages, target)
+    return SyncResult(folders, messages, target, exists, offset)
 
 
 def fetch_full_message(

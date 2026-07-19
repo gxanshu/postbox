@@ -81,14 +81,21 @@ class ImapSession:
         if typ != "OK":
             raise ImapError(f"could not move {uid} to {destination}: {data}")
 
-    def fetch_recent_headers(self, exists: int, limit: int) -> list[dict]:
-        """Fetch UID + flags + a few headers for the newest `limit` messages."""
+    def fetch_recent_headers(
+        self, exists: int, limit: int, offset: int = 0
+    ) -> list[dict]:
+        """Fetch UID + flags + a few headers for a window of `limit` messages,
+        `offset` messages back from the newest. offset=0 is the newest page;
+        offset=50 is the 50 before that, and so on (used for load-on-scroll)."""
         if exists == 0:
             return []
 
-        start = max(1, exists - limit + 1)  # e.g. 951:1000 for the last 50
+        end = exists - offset
+        if end < 1:
+            return []
+        start = max(1, end - limit + 1)  # exists=1000,limit=50,offset=50 -> 901:950
         typ, data = self._require_imap().fetch(
-            f"{start}:{exists}",
+            f"{start}:{end}",
             # BODY.PEEK[...] = look at the header WITHOUT marking it \Seen.
             "(UID FLAGS BODY.PEEK[HEADER.FIELDS "
             "(DATE FROM SUBJECT MESSAGE-ID IN-REPLY-TO REFERENCES)])",

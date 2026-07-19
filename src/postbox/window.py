@@ -52,6 +52,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     # file exactly.
     folder_list: Gtk.ListBox = Gtk.Template.Child()
     conversation_list: Gtk.ListView = Gtk.Template.Child()
+    conversation_scroller: Gtk.ScrolledWindow = Gtk.Template.Child()
     conversation_stack: Gtk.Stack = Gtk.Template.Child()
     reader_stack: Gtk.Stack = Gtk.Template.Child()
     reader_subject: Gtk.Label = Gtk.Template.Child()
@@ -148,6 +149,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._current_folder = None
         self._rendered_id = None
         self._active_view = None
+        # Load-on-scroll paging state, keyed by folder id: how many of the
+        # newest messages we've paged through (also the next page's offset),
+        # and whether older messages remain on the server.
+        self._loaded_count: dict[int, int] = {}
+        self._has_more: dict[int, bool] = {}
         self.reader_stack.set_visible_child_name("empty")
         self._set_mail_actions_enabled(False)
         self.reply_button.set_sensitive(False)
@@ -721,9 +727,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     # search query if one is typed. Called on folder change and search change.
     # keep_id re-selects that conversation if it's still in the list, so a mail
     # action can refresh without reloading the reader.
-    def _refresh_conversations(self, keep_id: int | None = None) -> None:
+    def _refresh_conversations(
+        self, keep_id: int | None = None, preserve_scroll: bool = False
+    ) -> None:
         if self._current_folder is None:
             return
+
+        # Rebuilding the model resets the ListView to the top; capture the
+        # scroll offset so a load-more can restore it once the model settles.
+        adjustment = self.conversation_scroller.get_vadjustment()
+        scroll_value = adjustment.get_value() if preserve_scroll else None
 
         query = self.search_entry.get_text().strip()
         if query:
@@ -760,6 +773,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._selection.unselect_all()
             self._update_reader()
 
+        if scroll_value is not None:
+            GLib.idle_add(adjustment.set_value, scroll_value)
+
     # Debounce keystrokes: query the database ~200ms after typing stops instead
     # of on every letter.
     def _on_search_changed(self, _entry: Gtk.SearchEntry) -> None:
@@ -792,6 +808,27 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         self.conversation_list.set_model(self._selection)
         self.conversation_list.set_factory(self._build_conversation_factory())
+
+        # Load older mail when the list is scrolled to the bottom.
+        self.conversation_scroller.connect("edge-reached", self._on_list_edge_reached)
+
+    # Scrolling to the bottom pulls the next-older page for the current folder,
+    # if the last sync said there's more to fetch.
+    def _on_list_edge_reached(
+        self, _scroller: Gtk.ScrolledWindow, pos: Gtk.PositionType
+    ) -> None:
+        if pos != Gtk.PositionType.BOTTOM:
+            return
+        folder = self._current_folder
+        if folder is None or self._syncing or not self._online:
+            return
+        if not self._has_more.get(folder.id, False):
+            return
+        self._start_sync(
+            background=True,
+            folder_name=folder.name,
+            offset=self._loaded_count.get(folder.id, 0),
+        )
 
     # (position, n_items) come from the signal; we just re-read the current
     # selection, so the parameters are ignored.
@@ -1063,7 +1100,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         return False
 
     def _start_sync(
-        self, background: bool = False, folder_name: str | None = None
+        self,
+        background: bool = False,
+        folder_name: str | None = None,
+        offset: int = 0,
     ) -> None:
         # Don't pile background syncs (folder clicks, the poll timer) on top of
         # one already running.
@@ -1081,7 +1121,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self.conversation_stack.set_visible_child_name("loading")
         thread = threading.Thread(
             target=self._sync_worker,
-            args=(self._account, password, folder_name),
+            args=(self._account, password, folder_name, offset),
             daemon=True,
         )
         thread.start()
@@ -1109,10 +1149,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     # Runs on the worker thread: network only, no Gtk/database access.
     def _sync_worker(
-        self, account: Account, password: str, folder_name: str | None
+        self,
+        account: Account,
+        password: str,
+        folder_name: str | None,
+        offset: int = 0,
     ) -> None:
         try:
-            result = mail_sync.fetch_mailbox(account, password, folder_name)
+            result = mail_sync.fetch_mailbox(
+                account, password, folder_name, offset=offset
+            )
         except Exception as error:
             category, message = errors.classify(error, account.imap_host)
             GLib.idle_add(self._on_sync_error, category, message)
@@ -1121,8 +1167,6 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     # Back on the main thread: safe to touch the database and widgets.
     def _on_sync_done(self, result: mail_sync.SyncResult) -> bool:
-        import sys as _sys
-        print(f"DBG sync-done {result.folder}", file=_sys.stderr, flush=True)
         # Remember the open conversation so a background poll doesn't yank it.
         selected = self._selection.get_selected_item()
         keep_id = selected.id if isinstance(selected, Conversation) else None
@@ -1160,9 +1204,23 @@ class PostboxMainWindow(Adw.ApplicationWindow):
                 new_count += 1
         self._db.reassign_conversations(target.id)
 
+        # Update paging state: track the deepest page loaded (max() so a
+        # newest-page poll never forgets how far the user has scrolled back),
+        # and offer "more" only while messages remain beyond it.
+        reached = result.offset + len(result.messages)
+        loaded = min(
+            result.exists, max(self._loaded_count.get(target.id, 0), reached)
+        )
+        self._loaded_count[target.id] = loaded
+        self._has_more[target.id] = result.exists > loaded
+
         self._set_syncing(False)
         self._reload_folders()
-        self._refresh_conversations(keep_id=keep_id)
+        # A load-more (offset > 0) only appends older mail, so hold the scroll
+        # position instead of snapping back to the top.
+        self._refresh_conversations(
+            keep_id=keep_id, preserve_scroll=result.offset > 0
+        )
         self.connection_banner.set_revealed(False)
         if not self._background_sync:
             self._toast(_("Synced {n} messages.").format(n=len(result.messages)))

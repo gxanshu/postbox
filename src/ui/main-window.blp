@@ -123,7 +123,7 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
                 content: Gtk.Stack conversation_stack {
                   StackPage {
                     name: "list";
-                    child: Gtk.ScrolledWindow {
+                    child: Gtk.ScrolledWindow conversation_scroller {
                       hscrollbar-policy: never;
 
                       child: Gtk.ListView conversation_list {
