@@ -54,7 +54,7 @@ class Database:
                 subject TEXT NOT NULL,
                 preview TEXT NOT NULL,
                 date TEXT NOT NULL,
-                unread INTEGER NOT NULL DEFAULT 1
+                unread INTEGER NOT NULL DEFAULT 1,
                 raw_message BLOB
             );
 
