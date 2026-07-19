@@ -21,15 +21,20 @@ import gi
 
 gi.require_version("WebKit", "6.0")
 
+import email
 import threading
+from datetime import datetime
+from email import policy
+from email.utils import parseaddr
 from gettext import gettext as _
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, WebKit
 
-from . import mail_sync
+from . import mail_send, mail_sync
 from .account_dialog import PostboxAccountDialog
+from .composer_window import PostboxComposerWindow
 from .conversation_row import ConversationRow
-from .core import secrets
+from .core import compose, secrets
 from .core.mime import message_parser
 from .core.models.account import Account
 from .core.models.attachment import Attachment
@@ -62,6 +67,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     add_account_button: Gtk.Button = Gtk.Template.Child()
     refresh_button: Gtk.Button = Gtk.Template.Child()
     sync_spinner: Gtk.Spinner = Gtk.Template.Child()
+    compose_button: Gtk.Button = Gtk.Template.Child()
+    reply_button: Gtk.Button = Gtk.Template.Child()
+    forward_button: Gtk.Button = Gtk.Template.Child()
     toast_overlay: Adw.ToastOverlay = Gtk.Template.Child()
 
     def __init__(self, app: Gtk.Application, db: Database) -> None:
@@ -71,11 +79,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._current_folder: Folder | None = None
         self._current_email_id: int | None = None
         self._current_html: str | None = None
+        self._current_raw: bytes | None = None
+        self._current_parsed: message_parser.ParsedMessage | None = None
 
         self._setup_webview()
         self.images_banner.connect("button-clicked", self._on_show_images_clicked)
         self.add_account_button.connect("clicked", self._on_add_account_clicked)
         self.refresh_button.connect("clicked", self._on_refresh_clicked)
+        self.compose_button.connect("clicked", self._on_compose_clicked)
+        self.reply_button.connect("clicked", self._on_reply_clicked)
+        self.forward_button.connect("clicked", self._on_forward_clicked)
 
         accounts = self._db.accounts()
         if not accounts:
@@ -103,6 +116,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         if first is not None:
             self.folder_list.select_row(first)
 
+        self._drain_outbox()
+
     def _on_add_account_clicked(self, _button: Gtk.Button) -> None:
         dialog = PostboxAccountDialog(self._db)
         dialog.connect("account-added", self._on_account_added)
@@ -110,6 +125,51 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     def _on_account_added(self, _dialog: PostboxAccountDialog) -> None:
         self._load_mail_view(self._db.accounts()[0])
+
+    def _on_compose_clicked(self, _button: Gtk.Button) -> None:
+        self._open_composer()
+
+    def _on_reply_clicked(self, _button: Gtk.Button) -> None:
+        if self._current_raw is None:
+            return
+        headers = email.message_from_bytes(self._current_raw, policy=policy.default)
+        to_addr = parseaddr(str(headers["From"] or ""))[1]
+        subject = compose.reply_subject(str(headers["Subject"] or ""))
+        original_text = self._current_parsed.text_body if self._current_parsed else ""
+        body = compose.quote_reply_body(
+            str(headers["From"] or ""), str(headers["Date"] or ""), original_text or ""
+        )
+        self._open_composer(to=to_addr, subject=subject, body=body)
+
+    def _on_forward_clicked(self, _button: Gtk.Button) -> None:
+        if self._current_raw is None:
+            return
+        headers = email.message_from_bytes(self._current_raw, policy=policy.default)
+        subject = compose.forward_subject(str(headers["Subject"] or ""))
+        original_text = self._current_parsed.text_body if self._current_parsed else ""
+        body = compose.forward_body(
+            str(headers["From"] or ""),
+            str(headers["Date"] or ""),
+            str(headers["Subject"] or ""),
+            original_text or "",
+        )
+        self._open_composer(subject=subject, body=body)
+
+    def _open_composer(self, to: str = "", subject: str = "", body: str = "") -> None:
+        composer = PostboxComposerWindow(
+            self.get_application(),
+            self._db,
+            self._account,
+            to=to,
+            subject=subject,
+            body=body,
+        )
+        composer.connect("finished", self._on_composer_finished)
+        composer.present()
+
+    def _on_composer_finished(self, _composer: PostboxComposerWindow) -> None:
+        self._reload_folders()
+        self._drain_outbox()
 
     # A tiny bit of app CSS: the accent-coloured unread dot and a bold sender
     # name. Loaded from a string so we don't need another resource file yet.
@@ -198,6 +258,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._update_reader()
 
     def _update_reader(self) -> None:
+        self.reply_button.set_sensitive(False)
+        self.forward_button.set_sensitive(False)
+
         email = self._selection.get_selected_item()
         if not isinstance(email, Email):
             self.reader_stack.set_visible_child_name("empty")
@@ -262,6 +325,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
     def _render_message(self, email_id: int, raw: bytes) -> None:
         parsed = message_parser.parse_message(raw)
+        self._current_raw = raw
+        self._current_parsed = parsed
 
         if parsed.html_body:
             self._show_html(parsed.html_body)
@@ -270,6 +335,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         self._populate_attachments(parsed.attachments)
         self.reader_stack.set_visible_child_name("message")
+        self.reply_button.set_sensitive(True)
+        self.forward_button.set_sensitive(True)
 
     def _show_text(self, text: str) -> None:
         self.images_banner.set_revealed(False)
@@ -359,7 +426,90 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         return factory
 
     def _on_refresh_clicked(self, _button: Gtk.Button) -> None:
+        self._drain_outbox()
         self._start_sync()
+
+    def _drain_outbox(self) -> None:
+        outbox = next(
+            (
+                folder
+                for folder in self._db.folders_for_account(self._account_id)
+                if folder.name == "Outbox"
+            ),
+            None,
+        )
+        if outbox is None:
+            return
+
+        pending = self._db.emails_in_folder(outbox.id)
+        if not pending:
+            return
+
+        password = secrets.lookup_password(self._account_id)
+        if not password:
+            return
+
+        items = []
+        for item in pending:
+            raw = self._db.get_raw_message(item.id)
+            if raw is None:
+                continue
+            items.append((item.id, item.subject, compose.extract_to_addresses(raw), raw))
+        if not items:
+            return
+
+        thread = threading.Thread(
+            target=self._outbox_worker,
+            args=(self._account, password, items),
+            daemon=True,
+        )
+        thread.start()
+
+    # Runs on the worker thread: network only, no Gtk/database access.
+    def _outbox_worker(
+        self,
+        account: Account,
+        password: str,
+        items: list[tuple[int, str, list[str], bytes]],
+    ) -> None:
+        results = []
+        for email_id, subject, to_addrs, raw in items:
+            try:
+                mail_send.send_message(account, password, account.email, to_addrs, raw)
+                results.append((email_id, subject, raw, True))
+            except Exception:
+                results.append((email_id, subject, raw, False))
+        GLib.idle_add(self._on_outbox_drained, results)
+
+    # Back on the main thread: safe to touch the database and widgets.
+    def _on_outbox_drained(
+        self, results: list[tuple[int, str, bytes, bool]]
+    ) -> bool:
+        sent_folder: Folder | None = None
+        sent_count = 0
+        for email_id, subject, raw, ok in results:
+            if not ok:
+                continue
+            if sent_folder is None:
+                sent_folder = self._db.get_or_create_folder(
+                    self._account_id, "Sent", "mail-sent-symbolic"
+                )
+            row = self._db.save_email(
+                sent_folder.id,
+                sender=self._account.email,
+                subject=subject,
+                preview=subject,
+                date=datetime.now().strftime("%b %d"),
+                unread=False,
+            )
+            self._db.save_raw_message(row.id, raw)
+            self._db.delete_email(email_id)
+            sent_count += 1
+
+        if sent_count:
+            self._reload_folders()
+            self._toast(_("Sent {n} queued message(s).").format(n=sent_count))
+        return False
 
     def _start_sync(self) -> None:
         password = secrets.lookup_password(self._account_id)
