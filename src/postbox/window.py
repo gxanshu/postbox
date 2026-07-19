@@ -688,6 +688,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self.thread_box.remove(child)
             child = next_child
 
+        remote_images = self._settings.get_boolean("load-remote-images")
         emails = conversation.emails
         last = len(emails) - 1
         for index, mail in enumerate(emails):
@@ -698,6 +699,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
                 on_save_attachment=self._save_attachment,
                 on_rendered=self._on_newest_rendered if newest else None,
                 expanded=newest,
+                remote_images=remote_images,
             )
             self.thread_box.append(view)
 
@@ -955,6 +957,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         return False
 
     def _notify_new_mail(self, count: int) -> None:
+        if not self._settings.get_boolean("notifications"):
+            return
         app = self.get_application()
         if app is None:
             return

@@ -25,6 +25,7 @@ class MessageView(Gtk.Box):
         on_save_attachment: Callable[[Attachment], None],
         on_rendered: Callable[["MessageView"], None] | None = None,
         expanded: bool = False,
+        remote_images: bool = False,
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.add_css_class("card")
@@ -37,6 +38,7 @@ class MessageView(Gtk.Box):
         self._on_load = on_load
         self._on_save_attachment = on_save_attachment
         self._on_rendered = on_rendered
+        self._remote_images = remote_images
         self._loaded = False
         self._loading = False
         self._placeholder: Gtk.Widget | None = None
@@ -126,20 +128,21 @@ class MessageView(Gtk.Box):
     def _show_html(self, html: str) -> None:
         self._html = html
 
-        banner = Adw.Banner(
-            title=_("Remote images are blocked to protect your privacy."),
-            button_label=_("Show Images"),
-            revealed=True,
-        )
-        banner.connect("button-clicked", self._on_show_images_clicked)
-        self._body.append(banner)
-        self._images_banner = banner
+        if not self._remote_images:
+            banner = Adw.Banner(
+                title=_("Remote images are blocked to protect your privacy."),
+                button_label=_("Show Images"),
+                revealed=True,
+            )
+            banner.connect("button-clicked", self._on_show_images_clicked)
+            self._body.append(banner)
+            self._images_banner = banner
 
         webview = WebKit.WebView()
         webview.set_size_request(-1, 500)
         settings = webview.get_settings()
         settings.set_enable_javascript(False)
-        settings.set_auto_load_images(False)
+        settings.set_auto_load_images(self._remote_images)
         webview.load_html(html, None)
         self._webview = webview
         self._body.append(webview)
