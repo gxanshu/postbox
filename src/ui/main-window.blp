@@ -77,6 +77,10 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
         content: Adw.NavigationPage {
           title: _("Postbox");
           child: Adw.NavigationSplitView inner_split {
+            sidebar-width-fraction: 0.38;
+            min-sidebar-width: 180;
+            max-sidebar-width: 380;
+
             sidebar: Adw.NavigationPage {
               title: _("Conversations");
               child: Adw.ToolbarView {
