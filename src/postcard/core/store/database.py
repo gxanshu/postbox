@@ -60,7 +60,9 @@ class Database:
                 imap_host TEXT NOT NULL,
                 imap_port INTEGER NOT NULL,
                 smtp_host TEXT NOT NULL,
-                smtp_port INTEGER NOT NULL
+                smtp_port INTEGER NOT NULL,
+                imap_security TEXT NOT NULL DEFAULT 'tls',
+                smtp_security TEXT NOT NULL DEFAULT 'starttls'
             );
 
             CREATE TABLE IF NOT EXISTS folders (
@@ -113,26 +115,6 @@ class Database:
             """
         )
 
-        # Migration: add per-protocol security columns for existing databases.
-        for col in ("imap_security", "smtp_security"):
-            try:
-                self._conn.execute(f"ALTER TABLE accounts ADD COLUMN {col} TEXT")
-            except sqlite3.OperationalError:
-                pass  # column already exists
-
-        self._conn.execute(
-            "UPDATE accounts SET imap_security = 'tls' WHERE imap_security IS NULL"
-        )
-        self._conn.execute(
-            """
-            UPDATE accounts
-            SET smtp_security = CASE
-                WHEN smtp_port = 465 THEN 'tls'
-                ELSE 'starttls'
-            END
-            WHERE smtp_security IS NULL
-            """
-        )
         self._conn.commit()
 
     # --- accounts -----------------------------------------------------------
