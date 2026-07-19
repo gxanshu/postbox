@@ -622,7 +622,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         for folder in self._db.folders_for_account(self._account_id):
             if folder.id == current_id:
                 continue
-            item = Gio.MenuItem.new(folder.name, None)
+            label = mail_sync.display_name_for_folder(folder.name)
+            item = Gio.MenuItem.new(label, None)
             item.set_action_and_target_value(
                 "win.move", GLib.Variant.new_string(folder.name)
             )
@@ -706,7 +707,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         box.set_margin_end(6)
         box.append(Gtk.Image.new_from_icon_name(folder.icon_name))
 
-        name = Gtk.Label(label=folder.name, xalign=0, hexpand=True)
+        name = Gtk.Label(
+            label=mail_sync.display_name_for_folder(folder.name),
+            xalign=0,
+            hexpand=True,
+        )
         box.append(name)
 
         count = self._db.unread_count_in_folder(folder.id)

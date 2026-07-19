@@ -156,6 +156,13 @@ def role_for_folder(name: str) -> str:
     return "other"
 
 
+def display_name_for_folder(name: str) -> str:
+    for prefix in ("[Gmail]/", "[Google Mail]/"):
+        if name.startswith(prefix):
+            return name[len(prefix) :]
+    return name
+
+
 def icon_for_folder(name: str) -> str:
     """Pick a symbolic icon name for a mailbox (used in the sidebar).
 
