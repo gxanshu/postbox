@@ -735,8 +735,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             self._selection.set_selected(target)
         else:
             self._selection.unselect_all()
-            self._rendered_id = None
-            self.reader_stack.set_visible_child_name("empty")
+            self._update_reader()
 
     # Debounce keystrokes: query the database ~200ms after typing stops instead
     # of on every letter.
