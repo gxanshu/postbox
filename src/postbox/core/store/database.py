@@ -16,6 +16,22 @@ def _fts_query(text: str) -> str:
     return " ".join(terms)
 
 
+def _arrival_key(mail: Email) -> int:
+    """A proxy for when a message arrived, for ordering threads/messages.
+
+    The IMAP UID (server_id) is guaranteed by the protocol to increase with
+    arrival order within a folder, unlike our local autoincrement id: once
+    load-on-scroll backfills older mail in a later fetch, that older mail gets
+    a *newer* local id, so sorting by id would put it first instead of last.
+    A message with no UID yet (a Sent copy saved right after sending, before
+    the next sync confirms it) sorts as the newest.
+    """
+    try:
+        return int(mail.server_id)
+    except (TypeError, ValueError):
+        return 2**31 - 1
+
+
 class Database:
     def __init__(self, path: str | None = None) -> None:
         if path is None:
@@ -230,17 +246,21 @@ class Database:
 
     def conversations_in_folder(self, folder_id: int) -> list[Conversation]:
         """Group a folder's emails into threads, newest thread first."""
-        emails = self._conn.execute(
-            "SELECT * FROM emails WHERE folder_id = ? ORDER BY id", (folder_id,)
+        rows = self._conn.execute(
+            "SELECT * FROM emails WHERE folder_id = ?", (folder_id,)
         ).fetchall()
 
         groups: dict[int, list[Email]] = {}
-        for row in emails:
-            key = row["conversation_id"] if row["conversation_id"] else row["id"]
-            groups.setdefault(key, []).append(self._email_from_row(row))
+        for row in rows:
+            email = self._email_from_row(row)
+            key = email.conversation_id or email.id
+            groups.setdefault(key, []).append(email)
 
-        conversations = [Conversation(mails) for mails in groups.values()]
-        conversations.sort(key=lambda c: c.emails[-1].id, reverse=True)
+        conversations = []
+        for mails in groups.values():
+            mails.sort(key=_arrival_key)  # oldest first, so .latest is right
+            conversations.append(Conversation(mails))
+        conversations.sort(key=lambda c: _arrival_key(c.latest), reverse=True)
         return conversations
 
     def search_conversations(

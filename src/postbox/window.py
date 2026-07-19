@@ -166,7 +166,16 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         for folder in self._db.folders_for_account(self._account_id):
             self._folders.append(folder)
 
-        self._selection: Gtk.SingleSelection = Gtk.SingleSelection()
+        # One persistent store, mutated in place via splice() on every
+        # refresh: swapping in a new Gio.ListStore each time (the previous
+        # approach) makes GtkListView treat it as a brand new list and reset
+        # scroll to the top, which fights load-on-scroll.
+        self._conversation_store: Gio.ListStore = Gio.ListStore(
+            item_type=Conversation
+        )
+        self._selection: Gtk.SingleSelection = Gtk.SingleSelection(
+            model=self._conversation_store
+        )
 
         self._setup_folder_sidebar()
         self._setup_conversation_list()
@@ -404,6 +413,27 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self._after_flag_change(conversation)
         uids = [mail.server_id for mail in conversation.emails]
         self._run_flag_worker(uids, "\\Flagged", add=starred, revert=revert)
+
+    # Clear the unread flag for a whole conversation: locally, in the badges
+    # and list, and on the server. A no-op if it's already read, so reopening a
+    # read thread costs nothing.
+    def _mark_conversation_read(self, conversation: Conversation) -> None:
+        if not conversation.unread:
+            return
+
+        for mail in conversation.emails:
+            mail.unread = False
+            self._db.mark_email_read(mail.id)
+
+        def revert() -> None:
+            for mail in conversation.emails:
+                mail.unread = True
+                self._db.mark_email_unread(mail.id)
+            self._after_flag_change(conversation)
+
+        self._after_flag_change(conversation)
+        uids = [mail.server_id for mail in conversation.emails]
+        self._run_flag_worker(uids, "\\Seen", add=True, revert=revert)
 
     # Update badges and the list after a flag change, keeping this
     # conversation selected (so the reader doesn't reload).
@@ -727,16 +757,9 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     # search query if one is typed. Called on folder change and search change.
     # keep_id re-selects that conversation if it's still in the list, so a mail
     # action can refresh without reloading the reader.
-    def _refresh_conversations(
-        self, keep_id: int | None = None, preserve_scroll: bool = False
-    ) -> None:
+    def _refresh_conversations(self, keep_id: int | None = None) -> None:
         if self._current_folder is None:
             return
-
-        # Rebuilding the model resets the ListView to the top; capture the
-        # scroll offset so a load-more can restore it once the model settles.
-        adjustment = self.conversation_scroller.get_vadjustment()
-        scroll_value = adjustment.get_value() if preserve_scroll else None
 
         query = self.search_entry.get_text().strip()
         if query:
@@ -745,15 +768,17 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             matches = self._db.conversations_in_folder(self._current_folder.id)
 
         if self.unread_button.get_active():
-            matches = [c for c in matches if c.unread]
+            # Keep the conversation being read (keep_id) even once it's marked
+            # read, so opening a mail here doesn't make it vanish under you; it
+            # drops out on the next refresh when you move to another.
+            matches = [c for c in matches if c.unread or c.id == keep_id]
 
-        conversations = Gio.ListStore(item_type=Conversation)
-        for conversation in matches:
-            conversations.append(conversation)
+        # Update the existing store's contents rather than swapping in a new
+        # one, so the ListView keeps its scroll position.
+        store = self._conversation_store
+        store.splice(0, store.get_n_items(), matches)
 
-        self._selection.set_model(conversations)
-
-        if conversations.get_n_items() > 0:
+        if store.get_n_items() > 0:
             self.conversation_stack.set_visible_child_name("list")
         elif self._syncing:
             self.conversation_stack.set_visible_child_name("loading")
@@ -762,8 +787,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         target = -1
         if keep_id is not None:
-            for index in range(conversations.get_n_items()):
-                if conversations.get_item(index).id == keep_id:
+            for index in range(store.get_n_items()):
+                if store.get_item(index).id == keep_id:
                     target = index
                     break
 
@@ -772,9 +797,6 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         else:
             self._selection.unselect_all()
             self._update_reader()
-
-        if scroll_value is not None:
-            GLib.idle_add(adjustment.set_value, scroll_value)
 
     # Debounce keystrokes: query the database ~200ms after typing stops instead
     # of on every letter.
@@ -859,6 +881,8 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self.forward_button.set_sensitive(False)
         self._active_view = None
         self._render_thread(conversation)
+        # Opening a conversation marks it read (like most mail clients).
+        self._mark_conversation_read(conversation)
 
     # Reflect the selected conversation's state on the action buttons.
     def _update_action_buttons(self, conversation: Conversation) -> None:
@@ -911,13 +935,10 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         self.reply_button.set_sensitive(True)
         self.forward_button.set_sensitive(True)
 
-    # Fetch one message's raw bytes for a MessageView: mark it read, serve the
-    # cached copy if we have it, else pull it over IMAP on a worker thread.
+    # Fetch one message's raw bytes for a MessageView: serve the cached copy if
+    # we have it, else pull it over IMAP on a worker thread. (Marking read is
+    # handled once per conversation in _mark_conversation_read.)
     def _load_body(self, mail: Email, callback: Callable) -> None:
-        if mail.unread:
-            mail.unread = False
-            self._db.mark_email_read(mail.id)
-
         cached = self._db.get_raw_message(mail.id)
         if cached is not None:
             callback(cached, None)
@@ -1041,7 +1062,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
             raw = self._db.get_raw_message(item.id)
             if raw is None:
                 continue
-            items.append((item.id, item.subject, compose.extract_to_addresses(raw), raw))
+            items.append((item.id, item.subject, compose.extract_recipients(raw), raw))
         if not items:
             return
 
@@ -1060,9 +1081,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         items: list[tuple[int, str, list[str], bytes]],
     ) -> None:
         results = []
-        for email_id, subject, to_addrs, raw in items:
+        for email_id, subject, recipients, raw in items:
             try:
-                mail_send.send_message(account, password, account.email, to_addrs, raw)
+                mail_send.send_message(
+                    account, password, account.email, recipients, raw
+                )
                 results.append((email_id, subject, raw, True))
             except Exception:
                 results.append((email_id, subject, raw, False))
@@ -1216,11 +1239,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         self._set_syncing(False)
         self._reload_folders()
-        # A load-more (offset > 0) only appends older mail, so hold the scroll
-        # position instead of snapping back to the top.
-        self._refresh_conversations(
-            keep_id=keep_id, preserve_scroll=result.offset > 0
-        )
+        self._refresh_conversations(keep_id=keep_id)
         self.connection_banner.set_revealed(False)
         if not self._background_sync:
             self._toast(_("Synced {n} messages.").format(n=len(result.messages)))

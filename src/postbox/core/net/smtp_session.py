@@ -25,10 +25,10 @@ class SmtpSession:
         except smtplib.SMTPException as error:
             raise SmtpError(str(error)) from error
 
-    def send_raw(self, from_addr: str, to_addrs: list[str], raw: bytes) -> None:
+    def send_raw(self, from_addr: str, recipients: list[str], raw: bytes) -> None:
         try:
             if self._smtp is not None:
-                self._smtp.sendmail(from_addr, to_addrs, raw)
+                self._smtp.sendmail(from_addr, recipients, raw)
         except smtplib.SMTPException as error:
             raise SmtpError(str(error)) from error
 

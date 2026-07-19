@@ -50,6 +50,7 @@ def forward_body(
 def build_mime_message(
     from_addr: str,
     to_addrs: list[str],
+    cc_addrs: list[str],
     subject: str,
     body_text: str,
     attachments: list[Attachment],
@@ -57,6 +58,8 @@ def build_mime_message(
     msg = EmailMessage()
     msg["From"] = from_addr
     msg["To"] = ", ".join(to_addrs)
+    if cc_addrs:
+        msg["Cc"] = ", ".join(cc_addrs)
     msg["Subject"] = subject
     msg["Date"] = email.utils.formatdate(localtime=True)
     msg["Message-ID"] = email.utils.make_msgid()
@@ -74,8 +77,13 @@ def build_mime_message(
     return msg
 
 
-def extract_to_addresses(raw: bytes) -> list[str]:
-    """Read the To header back out of a stored message, for retrying from Outbox."""
+def extract_recipients(raw: bytes) -> list[str]:
+    """Read the To/Cc headers back out of a stored message, for retrying from
+    Outbox. Bcc addresses are never written to the stored message, so a Bcc'd
+    recipient is lost if the original send failed and is retried later.
+    """
     headers = email.message_from_bytes(raw)
-    to_header = str(headers["To"] or "")
-    return [addr for _, addr in email.utils.getaddresses([to_header]) if addr]
+    addrs = email.utils.getaddresses(
+        [str(headers["To"] or ""), str(headers["Cc"] or "")]
+    )
+    return [addr for _, addr in addrs if addr]

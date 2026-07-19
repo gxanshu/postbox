@@ -20,6 +20,8 @@ class PostboxComposerWindow(Adw.Window):
     send_button: Gtk.Button = Gtk.Template.Child()
     send_spinner: Gtk.Spinner = Gtk.Template.Child()
     to_row: Adw.EntryRow = Gtk.Template.Child()
+    cc_row: Adw.EntryRow = Gtk.Template.Child()
+    bcc_row: Adw.EntryRow = Gtk.Template.Child()
     subject_row: Adw.EntryRow = Gtk.Template.Child()
     body_view: Gtk.TextView = Gtk.Template.Child()
     attach_button: Gtk.Button = Gtk.Template.Child()
@@ -55,15 +57,15 @@ class PostboxComposerWindow(Adw.Window):
         self.send_button.connect("clicked", self._on_send_clicked)
         self.attach_button.connect("clicked", self._on_attach_clicked)
 
-        for row in (self.to_row, self.subject_row):
+        for row in (self.to_row, self.cc_row, self.bcc_row, self.subject_row):
             row.connect("changed", self._update_send_sensitivity)
         self.body_view.get_buffer().connect("changed", self._update_send_sensitivity)
         self._update_send_sensitivity()
 
     def _update_send_sensitivity(self, *_args: object) -> None:
+        has_recipient = bool(self._to_addrs() or self._cc_addrs() or self._bcc_addrs())
         self.send_button.set_sensitive(
-            bool(self.to_row.get_text().strip())
-            and bool(self.subject_row.get_text().strip())
+            has_recipient and bool(self.subject_row.get_text().strip())
         )
 
     def _body_text(self) -> str:
@@ -71,14 +73,34 @@ class PostboxComposerWindow(Adw.Window):
         start, end = buffer.get_bounds()
         return buffer.get_text(start, end, False)
 
+    @staticmethod
+    def _parse_addrs(text: str) -> list[str]:
+        return [addr.strip() for addr in text.split(",") if addr.strip()]
+
     def _to_addrs(self) -> list[str]:
-        return [
-            addr.strip() for addr in self.to_row.get_text().split(",") if addr.strip()
-        ]
+        return self._parse_addrs(self.to_row.get_text())
+
+    def _cc_addrs(self) -> list[str]:
+        return self._parse_addrs(self.cc_row.get_text())
+
+    def _bcc_addrs(self) -> list[str]:
+        return self._parse_addrs(self.bcc_row.get_text())
+
+    def _recipients_display(self) -> str:
+        """A human-readable stand-in for the "sender" column of the Outbox/Drafts
+        list, which otherwise has no concept of outgoing recipients."""
+        return (
+            self.to_row.get_text().strip()
+            or self.cc_row.get_text().strip()
+            or self.bcc_row.get_text().strip()
+            or _("(no recipient)")
+        )
 
     def _has_content(self) -> bool:
         return bool(
             self.to_row.get_text().strip()
+            or self.cc_row.get_text().strip()
+            or self.bcc_row.get_text().strip()
             or self.subject_row.get_text().strip()
             or self._body_text().strip()
         )
@@ -137,13 +159,14 @@ class PostboxComposerWindow(Adw.Window):
             msg = compose.build_mime_message(
                 self._account.email,
                 self._to_addrs(),
+                self._cc_addrs(),
                 self.subject_row.get_text().strip(),
                 self._body_text(),
                 self._attachments,
             )
             row = self._db.save_email(
                 folder.id,
-                sender=self.to_row.get_text().strip() or _("(no recipient)"),
+                sender=self._recipients_display(),
                 subject=self.subject_row.get_text().strip() or _("(no subject)"),
                 preview=self._body_text()[:100],
                 date=_now(),
@@ -158,13 +181,20 @@ class PostboxComposerWindow(Adw.Window):
 
     def _on_send_clicked(self, _button: Gtk.Button) -> None:
         to_addrs = self._to_addrs()
+        cc_addrs = self._cc_addrs()
+        bcc_addrs = self._bcc_addrs()
         subject = self.subject_row.get_text().strip()
         body = self._body_text()
 
         msg = compose.build_mime_message(
-            self._account.email, to_addrs, subject, body, self._attachments
+            self._account.email, to_addrs, cc_addrs, subject, body, self._attachments
         )
         raw = msg.as_bytes()
+
+        # The SMTP envelope recipients, unlike the message's own To/Cc
+        # headers, also carry Bcc addresses -- they must never appear in the
+        # message itself, only in the delivery instructions given to the server.
+        recipients = to_addrs + cc_addrs + bcc_addrs
 
         # Save to Outbox before attempting to send -- a crash mid-send can
         # then never lose the message.
@@ -173,7 +203,7 @@ class PostboxComposerWindow(Adw.Window):
         )
         row = self._db.save_email(
             outbox.id,
-            sender=", ".join(to_addrs),
+            sender=self._recipients_display(),
             subject=subject,
             preview=body[:100],
             date=_now(),
@@ -184,14 +214,14 @@ class PostboxComposerWindow(Adw.Window):
         self._set_sending(True)
         thread = threading.Thread(
             target=self._send_worker,
-            args=(row.id, subject, to_addrs, raw),
+            args=(row.id, subject, recipients, raw),
             daemon=True,
         )
         thread.start()
 
     # Runs on the worker thread: network only, no Gtk/database access.
     def _send_worker(
-        self, email_id: int, subject: str, to_addrs: list[str], raw: bytes
+        self, email_id: int, subject: str, recipients: list[str], raw: bytes
     ) -> None:
         password = secrets.lookup_password(self._account.id)
         if not password:
@@ -199,7 +229,7 @@ class PostboxComposerWindow(Adw.Window):
             return
         try:
             mail_send.send_message(
-                self._account, password, self._account.email, to_addrs, raw
+                self._account, password, self._account.email, recipients, raw
             )
         except Exception as error:
             GLib.idle_add(self._on_send_failed, str(error))

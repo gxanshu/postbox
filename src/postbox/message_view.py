@@ -186,7 +186,7 @@ class MessageView(Gtk.Box):
             self._images_banner = banner
 
         webview = WebKit.WebView()
-        webview.set_size_request(-1, 500)
+        webview.set_size_request(-1, 800)
         settings = webview.get_settings()
         settings.set_enable_javascript(False)
         settings.set_auto_load_images(self._remote_images)
