@@ -55,6 +55,7 @@ class Database:
                 preview TEXT NOT NULL,
                 date TEXT NOT NULL,
                 unread INTEGER NOT NULL DEFAULT 1
+                raw_message BLOB
             );
 
             CREATE UNIQUE INDEX IF NOT EXISTS idx_emails_uid
@@ -79,7 +80,7 @@ class Database:
     def accounts(self) -> list[Account]:
         rows = self._conn.execute("SELECT * FROM accounts ORDER BY id").fetchall()
         return [self._account_from_row(row) for row in rows]
-    
+
     def save_account(
         self,
         email: str,
@@ -87,7 +88,7 @@ class Database:
         imap_host: str,
         imap_port: int,
         smtp_host: str,
-        smtp_port: int
+        smtp_port: int,
     ) -> Account:
         cursor = self._conn.execute(
             """
@@ -176,8 +177,19 @@ class Database:
         return row["n"]
 
     def mark_email_read(self, email_id: int) -> None:
+        self._conn.execute("UPDATE emails SET unread = 0 WHERE id = ?", (email_id,))
+        self._conn.commit()
+
+    def get_raw_message(self, email_id: int) -> bytes | None:
+        row = self._conn.execute(
+            "SELECT raw_message FROM emails WHERE id = ?", (email_id,)
+        ).fetchone()
+
+        return row["raw_message"] if row else None
+
+    def save_raw_message(self, email_id: int, raw: bytes) -> None:
         self._conn.execute(
-            "UPDATE emails SET unread = 0 WHERE id = ?", (email_id,)
+            "UPDATE emails SET raw_message = ? where id = ?", (raw, email_id)
         )
         self._conn.commit()
 
