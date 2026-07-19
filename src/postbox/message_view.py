@@ -51,14 +51,22 @@ class MessageView(Gtk.Box):
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         header.append(Adw.Avatar(size=32, show_initials=True, text=email.sender))
 
+        names = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
         sender = Gtk.Label(
-            label=email.sender, xalign=0, hexpand=True,
-            ellipsize=Pango.EllipsizeMode.END,
+            label=email.sender, xalign=0, ellipsize=Pango.EllipsizeMode.END
         )
         sender.add_css_class("heading")
-        header.append(sender)
+        names.append(sender)
 
-        date = Gtk.Label(label=email.date, xalign=1)
+        self._recipients = Gtk.Label(
+            xalign=0, ellipsize=Pango.EllipsizeMode.END, visible=False
+        )
+        self._recipients.add_css_class("dim-label")
+        self._recipients.add_css_class("caption")
+        names.append(self._recipients)
+        header.append(names)
+
+        date = Gtk.Label(label=email.date, xalign=1, valign=Gtk.Align.START)
         date.add_css_class("dim-label")
         header.append(date)
 
@@ -112,6 +120,8 @@ class MessageView(Gtk.Box):
         self.raw = raw
         self.parsed = message_parser.parse_message(raw)
 
+        self._show_details(self.parsed)
+
         if self.parsed.html_body:
             self._show_html(self.parsed.html_body)
         else:
@@ -120,6 +130,43 @@ class MessageView(Gtk.Box):
 
         if self._on_rendered is not None:
             self._on_rendered(self)
+
+    # A one-line "to …" summary under the sender, plus a collapsed Details
+    # section with the full From/To/Cc/Bcc/Date so the header stays uncluttered.
+    def _show_details(self, parsed: message_parser.ParsedMessage) -> None:
+        recipients = parsed.to + parsed.cc
+        if recipients:
+            self._recipients.set_text(
+                _("to {names}").format(names=", ".join(recipients))
+            )
+            self._recipients.set_visible(True)
+
+        grid = Gtk.Grid(row_spacing=4, column_spacing=12)
+        grid.set_margin_bottom(6)
+        row = 0
+        for label, value in (
+            (_("From"), parsed.from_display),
+            (_("To"), ", ".join(parsed.to)),
+            (_("Cc"), ", ".join(parsed.cc)),
+            (_("Bcc"), ", ".join(parsed.bcc)),
+            (_("Date"), parsed.date),
+        ):
+            if not value:
+                continue
+            name = Gtk.Label(label=label, xalign=1, valign=Gtk.Align.START)
+            name.add_css_class("dim-label")
+            grid.attach(name, 0, row, 1, 1)
+            content = Gtk.Label(
+                label=value, xalign=0, wrap=True, selectable=True, hexpand=True
+            )
+            grid.attach(content, 1, row, 1, 1)
+            row += 1
+
+        if row == 0:
+            return
+        expander = Gtk.Expander(label=_("Details"))
+        expander.set_child(grid)
+        self._body.append(expander)
 
     def _show_text(self, text: str) -> None:
         label = Gtk.Label(label=text, xalign=0, yalign=0, wrap=True, selectable=True)

@@ -1,4 +1,5 @@
 import email
+import email.utils
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.policy import default as default_policy
@@ -11,6 +12,12 @@ class ParsedMessage:
     text_body: str | None = None
     html_body: str | None = None
     attachments: list[Attachment] = field(default_factory=list)
+    subject: str = ""
+    from_display: str = ""
+    to: list[str] = field(default_factory=list)
+    cc: list[str] = field(default_factory=list)
+    bcc: list[str] = field(default_factory=list)
+    date: str = ""
 
 
 def parse_message(raw: bytes) -> ParsedMessage:
@@ -18,6 +25,13 @@ def parse_message(raw: bytes) -> ParsedMessage:
     assert isinstance(msg, EmailMessage)
 
     result = ParsedMessage()
+    result.subject = str(msg.get("Subject", ""))
+    result.from_display = ", ".join(_addresses(msg, "From"))
+    result.to = _addresses(msg, "To")
+    result.cc = _addresses(msg, "Cc")
+    result.bcc = _addresses(msg, "Bcc")
+    result.date = _format_date(msg.get("Date"))
+
     for part in msg.walk():
         if part.is_multipart():
             continue  # a contianer part -- its children are visited on their own
@@ -37,6 +51,29 @@ def parse_message(raw: bytes) -> ParsedMessage:
             result.attachments.append(_as_attachment(part))
 
     return result
+
+
+def _addresses(msg: EmailMessage, header: str) -> list[str]:
+    raw = [str(value) for value in msg.get_all(header, [])]
+    out = []
+    for name, addr in email.utils.getaddresses(raw):
+        if name and addr:
+            out.append(f"{name} <{addr}>")
+        elif addr:
+            out.append(addr)
+        elif name:
+            out.append(name)
+    return out
+
+
+def _format_date(raw: object) -> str:
+    if not raw:
+        return ""
+    try:
+        parsed = email.utils.parsedate_to_datetime(str(raw))
+    except (TypeError, ValueError):
+        return str(raw)
+    return parsed.strftime("%b %d, %Y %H:%M")
 
 
 def _as_attachment(part: EmailMessage) -> Attachment:
