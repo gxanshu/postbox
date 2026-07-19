@@ -53,6 +53,7 @@ postbox_core_models_sources = [
   'postbox/core/models/folder.py',
   'postbox/core/models/email.py',
   'postbox/core/models/conversation.py',
+  'postbox/core/models/attachment.py',
 ]
 python_installation.install_sources(postbox_core_models_sources, subdir: 'postbox/core/models')
 
@@ -67,6 +68,12 @@ postbox_core_net_sources = [
   'postbox/core/net/imap_session.py',
 ]
 python_installation.install_sources(postbox_core_net_sources, subdir: 'postbox/core/net')
+
+postbox_core_mime_sources = [
+  'postbox/core/mime/__init__.py',
+  'postbox/core/mime/message_parser.py',
+]
+python_installation.install_sources(postbox_core_mime_sources, subdir: 'postbox/core/mime')
 
 conf = configuration_data()
 conf.set('PYTHON', python_installation.full_path())
