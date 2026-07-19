@@ -1,0 +1,89 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $PostboxComposerWindow: Adw.Window {
+  title: _("New Message");
+  default-width: 640;
+  default-height: 560;
+
+  content: Adw.ToastOverlay toast_overlay {
+    child: Adw.ToolbarView {
+      [top]
+      Adw.HeaderBar {
+        show-start-title-buttons: false;
+        show-end-title-buttons: false;
+
+        [start]
+        Gtk.Button cancel_button {
+          label: _("Cancel");
+        }
+
+        [end]
+        Gtk.Button send_button {
+          label: _("Send");
+          sensitive: false;
+
+          styles ["suggested-action"]
+        }
+
+        [end]
+        Gtk.Spinner send_spinner {
+          visible: false;
+        }
+      }
+
+      content: Gtk.Box {
+        orientation: vertical;
+        spacing: 12;
+        margin-top: 12;
+        margin-bottom: 12;
+        margin-start: 12;
+        margin-end: 12;
+
+        Adw.PreferencesGroup {
+          Adw.EntryRow to_row {
+            title: _("To");
+          }
+
+          Adw.EntryRow subject_row {
+            title: _("Subject");
+          }
+        }
+
+        Gtk.ScrolledWindow {
+          vexpand: true;
+
+          child: Gtk.TextView body_view {
+            top-margin: 8;
+            bottom-margin: 8;
+            left-margin: 8;
+            right-margin: 8;
+            wrap-mode: word_char;
+          };
+        }
+
+        Gtk.Box {
+          spacing: 6;
+
+          Gtk.Button attach_button {
+            icon-name: "mail-attachment-symbolic";
+            tooltip-text: _("Add Attachment");
+
+            styles ["flat"]
+          }
+
+          Gtk.Label {
+            label: _("Attachments");
+            styles ["heading"]
+          }
+        }
+
+        Gtk.ListBox attachments_list {
+          selection-mode: none;
+
+          styles ["boxed-list"]
+        }
+      };
+    };
+  };
+}
