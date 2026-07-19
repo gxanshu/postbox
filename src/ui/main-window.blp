@@ -39,6 +39,13 @@ template $PostboxMainWindow: Adw.ApplicationWindow {
                 styles ["suggested-action"]
               }
 
+              title-widget: Gtk.MenuButton account_switcher {
+                always-show-arrow: true;
+                tooltip-text: _("Switch Account");
+
+                styles ["flat"]
+              };
+
               [end]
               Gtk.MenuButton {
                 primary: true;

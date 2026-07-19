@@ -105,4 +105,7 @@ class PostboxApplication(Adw.Application):
 
     def on_accounts_action(self, *args: object) -> None:
         dialog = PostboxAccountsDialog(self.db)
-        dialog.present(self.props.active_window)
+        window = self.props.active_window
+        if isinstance(window, PostboxMainWindow):
+            dialog.connect("closed", lambda *_: window.reload_accounts())
+        dialog.present(window)

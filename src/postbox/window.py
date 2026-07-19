@@ -29,6 +29,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from . import mail_send, mail_sync
 from .account_dialog import PostboxAccountDialog
+from .accounts_dialog import PostboxAccountsDialog
 from .composer_window import PostboxComposerWindow
 from .conversation_row import ConversationRow
 from .core import compose, secrets
@@ -54,6 +55,7 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     reader_subject: Gtk.Label = Gtk.Template.Child()
     thread_box: Gtk.Box = Gtk.Template.Child()
     main_stack: Gtk.Stack = Gtk.Template.Child()
+    account_switcher: Gtk.MenuButton = Gtk.Template.Child()
     add_account_button: Gtk.Button = Gtk.Template.Child()
     refresh_button: Gtk.Button = Gtk.Template.Child()
     sync_spinner: Gtk.Spinner = Gtk.Template.Child()
@@ -98,6 +100,11 @@ class PostboxMainWindow(Adw.ApplicationWindow):
         )
         self.unread_button.connect("toggled", self._on_unread_toggled)
 
+        # Connected once here (not per account load) so switching accounts
+        # doesn't stack duplicate handlers or CSS providers.
+        self._load_styles()
+        self.folder_list.connect("row-selected", self._on_folder_selected)
+
         accounts = self._db.accounts()
         if not accounts:
             self.main_stack.set_visible_child_name("no-account")
@@ -108,7 +115,18 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     def _load_mail_view(self, account: Account) -> None:
         self._account = account
         self._account_id = account.id
+
+        # Reset per-account reader state so a switch starts clean.
+        self._current_folder = None
+        self._rendered_id = None
+        self._active_view = None
+        self.reader_stack.set_visible_child_name("empty")
+        self._set_mail_actions_enabled(False)
+        self.reply_button.set_sensitive(False)
+        self.forward_button.set_sensitive(False)
+
         self.main_stack.set_visible_child_name("mail")
+        self._refresh_account_switcher()
 
         self._folders: Gio.ListStore = Gio.ListStore(item_type=Folder)
         for folder in self._db.folders_for_account(self._account_id):
@@ -116,7 +134,6 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         self._selection: Gtk.SingleSelection = Gtk.SingleSelection()
 
-        self._load_styles()
         self._setup_folder_sidebar()
         self._setup_conversation_list()
 
@@ -126,13 +143,81 @@ class PostboxMainWindow(Adw.ApplicationWindow):
 
         self._drain_outbox()
 
+    # --- account switcher -------------------------------------------------
+
+    def _refresh_account_switcher(self) -> None:
+        self.account_switcher.set_label(self._account.email)
+        self.account_switcher.set_popover(self._build_account_popover())
+
+    def _build_account_popover(self) -> Gtk.Popover:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        for margin in ("top", "bottom", "start", "end"):
+            getattr(box, f"set_margin_{margin}")(6)
+
+        accounts_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        accounts_list.add_css_class("boxed-list")
+        for account in self._db.accounts():
+            row = Adw.ActionRow(
+                title=account.email, subtitle=account.display_name, activatable=True
+            )
+            if account.id == self._account_id:
+                row.add_suffix(
+                    Gtk.Image.new_from_icon_name("object-select-symbolic")
+                )
+            row.connect("activated", self._on_account_row_activated, account)
+            accounts_list.append(row)
+        box.append(accounts_list)
+
+        box.append(Gtk.Separator())
+        for label, handler in (
+            (_("Add Account"), self._on_switcher_add),
+            (_("Manage Accounts"), self._on_switcher_manage),
+        ):
+            button = Gtk.Button(label=label)
+            button.add_css_class("flat")
+            button.connect("clicked", handler)
+            box.append(button)
+
+        popover = Gtk.Popover()
+        popover.set_child(box)
+        return popover
+
+    def _on_account_row_activated(self, _row: Adw.ActionRow, account: Account) -> None:
+        self.account_switcher.popdown()
+        if account.id != self._account_id:
+            self._load_mail_view(account)
+
+    def _on_switcher_add(self, button: Gtk.Button) -> None:
+        self.account_switcher.popdown()
+        self._on_add_account_clicked(button)
+
+    def _on_switcher_manage(self, _button: Gtk.Button) -> None:
+        self.account_switcher.popdown()
+        dialog = PostboxAccountsDialog(self._db)
+        dialog.connect("closed", lambda *_: self.reload_accounts())
+        dialog.present(self)
+
+    # Re-read accounts after they change (add/remove); fall back sensibly if
+    # the active account was deleted.
+    def reload_accounts(self) -> None:
+        accounts = self._db.accounts()
+        if not accounts:
+            self.main_stack.set_visible_child_name("no-account")
+            return
+        current = getattr(self, "_account_id", None)
+        if current is not None and any(a.id == current for a in accounts):
+            self._refresh_account_switcher()
+        else:
+            self._load_mail_view(accounts[0])
+
     def _on_add_account_clicked(self, _button: Gtk.Button) -> None:
         dialog = PostboxAccountDialog(self._db)
         dialog.connect("account-added", self._on_account_added)
         dialog.present(self)
 
     def _on_account_added(self, _dialog: PostboxAccountDialog) -> None:
-        self._load_mail_view(self._db.accounts()[0])
+        # Load the newly added account (highest id sorts last).
+        self._load_mail_view(self._db.accounts()[-1])
 
     def _signature_text(self) -> str:
         if not self._settings.get_boolean("signature-enabled"):
@@ -532,7 +617,6 @@ class PostboxMainWindow(Adw.ApplicationWindow):
     # the store for free.
     def _setup_folder_sidebar(self) -> None:
         self.folder_list.bind_model(self._folders, self._build_folder_row)
-        self.folder_list.connect("row-selected", self._on_folder_selected)
 
     def _build_folder_row(self, item: GObject.Object) -> Gtk.Widget:
         folder = item
