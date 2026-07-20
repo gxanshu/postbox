@@ -1236,8 +1236,6 @@ class PostcardMainWindow(Adw.ApplicationWindow):
         self._reload_folders()
         self._refresh_conversations(keep_id=keep_id)
         self.connection_banner.set_revealed(False)
-        if not self._background_sync:
-            self._toast(_("Synced {n} messages.").format(n=len(result.messages)))
 
         # Only nag about new mail when the user isn't already looking.
         if new_count and not self.is_active():
