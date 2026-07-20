@@ -27,7 +27,7 @@ gnome.compile_resources('postcard',
   gresource_bundle: true,
   install: true,
   install_dir: pkgdatadir,
-  dependencies: blueprints,
+  dependencies: [blueprints, appstream_file],
 )
 
 postcard_sources = [

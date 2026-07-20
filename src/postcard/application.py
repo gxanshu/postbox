@@ -93,16 +93,21 @@ class PostcardApplication(Adw.Application):
         if shortcuts:
             self.set_accels_for_action(f"app.{name}", shortcuts)
 
+    MAINTAINERS = [
+        "Anshu Meena https://github.com/gxanshu",
+    ]
+    CONTRIBUTORS = [
+        "Chris Pouliot https://github.com/chrispouliot",
+    ]
+
     def on_about_action(self, *args: object) -> None:
-        about = Adw.AboutDialog(
-            application_name="Postcard",
-            application_icon="in.gxanshu.postcard",
-            developer_name="Anshu",
-            translator_credits=_("translator-credits"),
-            version=self.version,
-            developers=["Anshu", "Chris Pouliot https://github.com/chrispouliot"],
-            copyright="© 2026 Anshu",
+        about = Adw.AboutDialog.new_from_appdata(
+            "/in/gxanshu/postcard/metainfo.xml", self.version
         )
+        about.set_translator_credits(_("translator-credits"))
+        about.set_developers(self.MAINTAINERS)
+        about.add_credit_section(_("Contributors"), self.CONTRIBUTORS)
+        about.set_copyright("© 2026 Anshu")
         about.present(self.props.active_window)
 
     def on_preferences_action(self, *args: object) -> None:
