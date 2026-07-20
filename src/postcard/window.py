@@ -906,7 +906,7 @@ class PostcardMainWindow(Adw.ApplicationWindow):
             self.star_button.set_icon_name("non-starred-symbolic")
             self.star_button.set_tooltip_text(_("Star"))
 
-    # Build one MessageView per email, oldest first. The newest starts expanded
+    # Build one MessageView per email, newest first. The newest starts expanded
     # (which loads its body); older ones load lazily when the user expands them.
     def _render_thread(self, conversation: Conversation) -> None:
         self.reader_subject.set_label(conversation.subject)
@@ -918,10 +918,9 @@ class PostcardMainWindow(Adw.ApplicationWindow):
             child = next_child
 
         remote_images = self._settings.get_boolean("load-remote-images")
-        emails = conversation.emails
-        last = len(emails) - 1
+        emails = list(reversed(conversation.emails))
         for index, mail in enumerate(emails):
-            newest = index == last
+            newest = index == 0
             view = MessageView(
                 mail,
                 on_load=self._load_body,
