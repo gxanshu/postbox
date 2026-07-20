@@ -86,7 +86,7 @@ class PostcardApplication(Adw.Application):
             developer_name="Anshu",
             translator_credits=_("translator-credits"),
             version=self.version,
-            developers=["Anshu"],
+            developers=["Anshu", "Chris Pouliot https://github.com/chrispouliot"],
             copyright="© 2026 Anshu",
         )
         about.present(self.props.active_window)

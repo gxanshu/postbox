@@ -51,6 +51,14 @@
   </screenshots>
 
   <releases>
+    <release version="1.1.0" date="2026-07-20">
+      <description translate="no">
+        <p>New in this release:</p>
+        <ul>
+          <li>TLS/STARTTLS option for Proton Mail Bridge accounts</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-07-19">
       <description translate="no">
         <p>First release.</p>
