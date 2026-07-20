@@ -51,6 +51,20 @@
   </screenshots>
 
   <releases>
+    <release version="1.1.1" date="2026-07-20">
+      <description translate="no">
+        <p>New in this release:</p>
+        <ul>
+          <li>Bold unread subjects instead of relying on the dot</li>
+          <li>Show a star icon for the starred mail folder</li>
+          <li>Richer content in new mail notifications</li>
+          <li>Show the latest mail first in the conversation view</li>
+          <li>Fix folders with spaces in their names failing to open</li>
+          <li>Remove the tooltip that lingered after the first sync</li>
+          <li>Remove the accounts option from the primary menu</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-07-20">
       <description translate="no">
         <p>New in this release:</p>
