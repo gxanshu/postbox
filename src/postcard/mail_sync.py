@@ -153,6 +153,8 @@ def role_for_folder(name: str) -> str:
         return "junk"
     if "archive" in lname or "all mail" in lname:
         return "archive"
+    if "star" in lname or "flagged" in lname:
+        return "starred"
     return "other"
 
 
@@ -175,6 +177,7 @@ def icon_for_folder(name: str) -> str:
         "drafts": "document-edit-symbolic",
         "trash": "user-trash-symbolic",
         "junk": "mail-mark-junk-symbolic",
+        "starred": "starred-symbolic",
     }.get(role_for_folder(name), "folder-symbolic")
 
 
