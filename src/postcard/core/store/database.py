@@ -120,12 +120,6 @@ class Database:
     # --- accounts -----------------------------------------------------------
 
     def _account_from_row(self, row: sqlite3.Row) -> Account:
-        imap_sec = row["imap_security"]
-        if imap_sec is None:
-            imap_sec = "tls"  # legacy: always used IMAP4_SSL
-        smtp_sec = row["smtp_security"]
-        if smtp_sec is None:
-            smtp_sec = "tls" if row["smtp_port"] == 465 else "starttls"
         return Account(
             id=row["id"],
             email=row["email"],
@@ -134,8 +128,8 @@ class Database:
             imap_port=row["imap_port"],
             smtp_host=row["smtp_host"],
             smtp_port=row["smtp_port"],
-            imap_security=imap_sec,
-            smtp_security=smtp_sec,
+            imap_security=row["imap_security"],
+            smtp_security=row["smtp_security"],
         )
 
     def accounts(self) -> list[Account]:
